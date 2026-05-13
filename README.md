@@ -8,7 +8,7 @@
 
 ## 🧭 프로젝트 개요
 
-본 프로젝트는 C++과 DirectX11을 사용해 대량의 입자를 실시간으로 시뮬레이션하고 렌더링하는 VFX 시스템 프로젝트입니다.
+본 프로젝트는 C++과 DirectX 11을 사용해 대량의 입자를 실시간으로 시뮬레이션하고 렌더링하는 VFX 시스템 프로젝트입니다.
 
 주요 목표는 다음과 같습니다.
 
@@ -22,7 +22,7 @@
 
 GpuDrivenVFX를 통해 구현하고 경험한 핵심 기능은 다음과 같습니다.
 
-- DirectX11 기반 3D 입자 렌더링 시스템 구현
+- DirectX 11 기반 3D 입자 렌더링 시스템 구현
 - CPU 기반 Particle Simulation과 GPU Compute Shader 기반 Particle Simulation 구현
 - 입자 수 증가에 따른 성능 측정 및 분석 시스템 구현
 
@@ -31,8 +31,14 @@ GpuDrivenVFX를 통해 구현하고 경험한 핵심 기능은 다음과 같습�
 ## 🔧 사용 기술
 
 - C++ : 입자 시스템, 렌더링 구조, 성능 측정 로직 구현
-- DirectX11 : 3D 입자 렌더링 및 GPU 리소스 관리
+- DirectX 11 : 3D 입자 렌더링 및 GPU 리소스 관리
 - HLSL : Vertex / Pixel / Compute Shader 작성
+
+---
+
+## 📄 문서
+
+[![PixelOS Docs](https://img.shields.io/badge/GpuDrivenVFX-Documentation-purple?style=for-the-badge&logo=obsidian)](https://github.com/MANGRYANG/GpuDrivenVFX-docs)
 
 ---
 
