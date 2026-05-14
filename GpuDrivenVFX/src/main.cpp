@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "app.h"
 
 int WINAPI wWinMain(
     _In_ HINSTANCE hInstance,
@@ -7,7 +8,14 @@ int WINAPI wWinMain(
     _In_ int nCmdShow
 )
 {
-    MessageBoxW(nullptr, L"GpuDrivenVFX project", L"GpuDrivenVFX", MB_OK);
+    App app;
 
-    return 0;
+    if (!app.Initialize(hInstance, nCmdShow))
+    {
+        MessageBoxW(nullptr, L"Failed to initialize application.", L"Error", MB_OK | MB_ICONERROR);
+
+        return -1;
+    }
+
+    return app.Run();
 }
