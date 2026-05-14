@@ -12,9 +12,11 @@
 
 주요 목표는 다음과 같습니다.
 
-- DirectX11을 사용하여 3D 공간에서 입자를 렌더링하는 기본 시스템 구현
-- CPU 기반 입자 시스템과 GPU Compute Shader 기반 입자 시스템 구현
-- 입자 수 증가에 따른 성능 차이를 측정하고 병목 지점 분석
+- DirectX 11 렌더링 파이프라인을 직접 구성할 수 있다.
+- CPU Particle System과 GPU Particle System의 구조 차이를 이해한다.
+- HLSL Compute Shader로 입자 시뮬레이션을 GPU에서 처리할 수 있다.
+- 성능 측정 데이터를 기반으로 병목을 설명할 수 있다.
+- 게임 클라이언트 VFX 시스템의 최적화 관점을 설명할 수 있다.
 
 ---
 
@@ -38,7 +40,7 @@ GpuDrivenVFX를 통해 구현하고 경험한 핵심 기능은 다음과 같습�
 
 ## 📄 문서
 
-[![PixelOS Docs](https://img.shields.io/badge/GpuDrivenVFX-Documentation-purple?style=for-the-badge&logo=obsidian)](https://github.com/MANGRYANG/GpuDrivenVFX-docs)
+[![GpuDrivenVFX Docs](https://img.shields.io/badge/GpuDrivenVFX-Documentation-purple?style=for-the-badge&logo=obsidian)](https://github.com/MANGRYANG/GpuDrivenVFX-docs)
 
 ---
 
