@@ -1,6 +1,7 @@
 #pragma once
 
 #include "window.h"
+#include "renderer.h"
 
 class App
 {
@@ -25,6 +26,8 @@ private:
 private:
     // 애플리케이션이 관리하는 윈도우
     Window m_window;
+    // 애플리케이션이 관리하는 렌더러
+    Renderer m_renderer;
     // 애플리케이션 종료 조건 제어용 변수
     bool m_running = true;
 };

@@ -14,6 +14,12 @@ bool App::Initialize(HINSTANCE hInstance, int nCmdShow)
         return false;
     }
 
+    // 렌더러 초기화에 실패한 경우 실패 처리
+    if (!m_renderer.Initialize(m_window.GetHwnd(), m_window.GetWidth(), m_window.GetHeight()))
+    {
+        return false;
+    }
+
     return true;
 }
 
@@ -47,5 +53,9 @@ void App::Update()
 
 void App::Render()
 {
-    // 이후 작성
+    // 프레임 드로우 준비 및 배경 색 초기화 (#0D141F)
+    m_renderer.BeginFrame(0.05f, 0.08f, 0.12f, 1.0f);
+
+    // 최종 화면 출력
+    m_renderer.EndFrame();
 }

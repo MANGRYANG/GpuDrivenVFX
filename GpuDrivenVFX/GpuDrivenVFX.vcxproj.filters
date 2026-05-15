@@ -5,10 +5,12 @@
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\window.cpp" />
     <ClCompile Include="src\app.cpp" />
+    <ClCompile Include="src\renderer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\pch.h" />
     <ClInclude Include="src\window.h" />
     <ClInclude Include="src\app.h" />
+    <ClInclude Include="src\renderer.h" />
   </ItemGroup>
 </Project>
