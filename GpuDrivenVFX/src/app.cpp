@@ -20,6 +20,12 @@ bool App::Initialize(HINSTANCE hInstance, int nCmdShow)
         return false;
     }
 
+    // 셰이더 컴파일에 실패한 경우 실패 처리
+    if (!m_shader.Initialize(m_renderer.GetDevice(), L"shaders/VertexShader.hlsl", L"shaders/PixelShader.hlsl"))
+    {
+        return false;
+    }
+
     return true;
 }
 
@@ -55,6 +61,9 @@ void App::Render()
 {
     // 프레임 드로우 준비 및 배경 색 초기화 (#0D141F)
     m_renderer.BeginFrame(0.05f, 0.08f, 0.12f, 1.0f);
+
+    // 셰이더 바인딩
+    m_shader.Bind(m_renderer.GetContext());
 
     // 최종 화면 출력
     m_renderer.EndFrame();
