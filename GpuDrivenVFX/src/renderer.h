@@ -17,6 +17,16 @@ public:
     // 버퍼를 스왑하여 화면에 최종 결과물을 출력하는 함수
     void EndFrame();
 
+    // 디바이스 객체 Getter
+    ID3D11Device* GetDevice() const { return m_device.Get(); }
+    // 디바이스 컨텍스트 객체 Getter
+    ID3D11DeviceContext* GetContext() const { return m_context.Get(); }
+
+    // 렌더링 타겟의 가로 해상도 Getter
+    int GetWidth() const { return m_width; }
+    // 렌더링 타겟의 세로 해상도 Getter
+    int GetHeight() const { return m_height; }
+
 private:
     // 디바이스 및 스왑 체인을 생성하는 함수
     bool CreateDeviceAndSwapChain(HWND hwnd, int width, int height);
