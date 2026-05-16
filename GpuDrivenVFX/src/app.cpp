@@ -8,21 +8,31 @@ bool App::Initialize(HINSTANCE hInstance, int nCmdShow)
     // m_Window에 전달할 윈도우 높이
     constexpr int windowHeight = 720;
 
-    // 윈도우 초기화에 실패한 경우 실패 처리
+    // 윈도우 초기화
     if (!m_window.Initialize(hInstance, nCmdShow, windowWidth, windowHeight, L"GPU-Driven VFX System"))
     {
+        // 초기화하지 못한 경우 실패 처리
         return false;
     }
 
-    // 렌더러 초기화에 실패한 경우 실패 처리
+    // 렌더러 초기화
     if (!m_renderer.Initialize(m_window.GetHwnd(), m_window.GetWidth(), m_window.GetHeight()))
     {
+        // 초기화하지 못한 경우 실패 처리
         return false;
     }
 
-    // 셰이더 컴파일에 실패한 경우 실패 처리
+    // 셰이더 컴파일
     if (!m_shader.Initialize(m_renderer.GetDevice(), L"shaders/VertexShader.hlsl", L"shaders/PixelShader.hlsl"))
     {
+        // 컴파일하지 못한 경우 실패 처리
+        return false;
+    }
+
+    // 검증용 삼각형 메쉬 정점 리소스 초기화
+    if (!m_triangleMesh.InitializeTriangle(m_renderer.GetDevice(), m_shader.GetVertexShaderBlob()))
+    {
+        // 초기화하지 못한 경우 실패 처리
         return false;
     }
 
@@ -64,6 +74,9 @@ void App::Render()
 
     // 셰이더 바인딩
     m_shader.Bind(m_renderer.GetContext());
+
+    // 검증용 삼각형 그리기
+    m_triangleMesh.Draw(m_renderer.GetContext());
 
     // 최종 화면 출력
     m_renderer.EndFrame();

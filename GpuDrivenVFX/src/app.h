@@ -3,6 +3,7 @@
 #include "window.h"
 #include "renderer.h"
 #include "shader.h"
+#include "mesh.h"
 
 class App
 {
@@ -31,6 +32,8 @@ private:
     Renderer m_renderer;
     // 애플리케이션이 관리하는 셰이더
     Shader m_shader;
+    // GPU 파이프라인 검증을 위한 임시 삼각형 메쉬
+    Mesh m_triangleMesh;
 
     // 애플리케이션 종료 조건 제어용 변수
     bool m_running = true;

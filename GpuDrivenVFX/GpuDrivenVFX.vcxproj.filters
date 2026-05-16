@@ -7,6 +7,7 @@
     <ClCompile Include="src\app.cpp" />
     <ClCompile Include="src\renderer.cpp" />
     <ClCompile Include="src\shader.cpp" />
+    <ClCompile Include="src\mesh.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\pch.h" />
@@ -14,6 +15,7 @@
     <ClInclude Include="src\app.h" />
     <ClInclude Include="src\renderer.h" />
     <ClInclude Include="src\shader.h" />
+    <ClInclude Include="src\mesh.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="shaders\VertexShader.hlsl" />
