@@ -29,28 +29,40 @@ bool App::Initialize(HINSTANCE hInstance, int nCmdShow)
         return false;
     }
 
-    // 삼각형을 구성할 정점 데이터를 담은 배열
-    const std::vector<Vertex> triangleVertices =
+    // 사각형을 구성할 정점 데이터를 담은 배열
+    const std::vector<Vertex> quadVertices =
     {
         {
-            DirectX::XMFLOAT3(0.0f, 0.5f, 0.0f),
+            DirectX::XMFLOAT3(-0.5f, 0.5f, 0.0f),
             DirectX::XMFLOAT3(0.0f, 0.0f, -1.0f),
             DirectX::XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f)
         },
         {
-            DirectX::XMFLOAT3(0.4f, -0.5f, 0.0f),
+            DirectX::XMFLOAT3(0.5f, 0.5f, 0.0f),
             DirectX::XMFLOAT3(0.0f, 0.0f, -1.0f),
             DirectX::XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f)
         },
         {
-            DirectX::XMFLOAT3(-0.4f, -0.5f, 0.0f),
+            DirectX::XMFLOAT3(-0.5f, -0.5f, 0.0f),
             DirectX::XMFLOAT3(0.0f, 0.0f, -1.0f),
             DirectX::XMFLOAT4(0.0f, 0.3f, 1.0f, 1.0f)
+        },
+        {
+            DirectX::XMFLOAT3(0.5f, -0.5f, 0.0f),
+            DirectX::XMFLOAT3(0.0f, 0.0f, -1.0f),
+            DirectX::XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f)
         }
     };
 
-    // 검증용 삼각형 메쉬 정점 리소스 초기화
-    if (!m_triangleMesh.Initialize(m_renderer.GetDevice(), m_shader.GetVertexShaderBlob(), triangleVertices))
+    // 정점 인덱스 데이터
+    const std::vector<uint32_t> quadIndices =
+    {
+        0, 1, 2,
+        1, 3, 2
+    };
+
+    // 메쉬 정점 리소스 초기화
+    if (!m_quadMesh.Initialize(m_renderer.GetDevice(), m_shader.GetVertexShaderBlob(), quadVertices, quadIndices))
     {
         // 초기화하지 못한 경우 실패 처리
         return false;
@@ -95,8 +107,8 @@ void App::Render()
     // 셰이더 바인딩
     m_shader.Bind(m_renderer.GetContext());
 
-    // 검증용 삼각형 그리기
-    m_triangleMesh.Draw(m_renderer.GetContext());
+    // 인덱스 버퍼 기반 사각형 그리기
+    m_quadMesh.Draw(m_renderer.GetContext());
 
     // 최종 화면 출력
     m_renderer.EndFrame();

@@ -1,7 +1,13 @@
 #include "pch.h"
 #include "mesh.h"
 
-bool Mesh::Initialize(ID3D11Device* device, ID3DBlob* vertexShaderBlob, const std::vector<Vertex>& vertices)
+bool Mesh::Initialize
+(
+    ID3D11Device* device,
+    ID3DBlob* vertexShaderBlob,
+    const std::vector<Vertex>& vertices,
+    const std::vector<uint32_t>& indices
+)
 {
     // 디바이스 또는 정점 셰이더 블롭이 누락된 경우
     if (!device || !vertexShaderBlob)
@@ -12,12 +18,11 @@ bool Mesh::Initialize(ID3D11Device* device, ID3DBlob* vertexShaderBlob, const st
         return false;
     }
 
-    // 정점 정보 구조체 배열이 비어 있는 경우
-    if (vertices.empty())
+    // 정점 구조체 배열 또는 인덱스 배열이 비어 있는 경우
+    if (vertices.empty() || indices.empty())
     {
         // 메시지 박스 플로팅
-        MessageBoxW(nullptr, L"Mesh vertices are empty.", L"Mesh Error", MB_OK | MB_ICONERROR);
-
+        MessageBoxW(nullptr, L"Mesh vertices or indices are empty.", L"Mesh Error", MB_OK | MB_ICONERROR);
         return false;
     }
 
@@ -57,6 +62,43 @@ bool Mesh::Initialize(ID3D11Device* device, ID3DBlob* vertexShaderBlob, const st
 
         return false;
     }
+
+    // 인덱스 버퍼 설명자 구조체
+    D3D11_BUFFER_DESC indexBufferDesc = {};
+    // 버퍼를 구성할 데이터 배열의 메모리 크기 설정
+    indexBufferDesc.ByteWidth = static_cast<UINT>(sizeof(uint32_t) * indices.size());
+    // 버퍼의 사용 방식을 생성 후 변경 불가능한 읽기 전용으로 설정
+    indexBufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
+    // 버퍼의 사용 용도를 파이프라인의 인덱스 버퍼로 지정
+    indexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+    // CPU가 버퍼에 직접 엑세스할 수 없도록 설정
+    indexBufferDesc.CPUAccessFlags = 0;
+    // 기타 특수 기능 사용하지 않음
+    indexBufferDesc.MiscFlags = 0;
+    // Structured Buffer가 아니므로 기본값으로 설정
+    indexBufferDesc.StructureByteStride = 0;
+
+    initialData = {};
+    // 인덱스 데이터 배열을 초기화 데이터로 설정
+    initialData.pSysMem = indices.data();
+
+    // 인덱스 버퍼 생성
+    hr = device->CreateBuffer
+    (
+        &indexBufferDesc,
+        &initialData,
+        m_indexBuffer.GetAddressOf()
+    );
+
+    // 버퍼 생성에 실패한 경우
+    if (FAILED(hr))
+    {
+        // 메시지 박스 플로팅
+        MessageBoxW(nullptr, L"Failed to create index buffer.", L"Mesh Error", MB_OK | MB_ICONERROR);
+
+        return false;
+    }
+    
 
     // 입력 레이아웃 설명자 구조체 배열
     const D3D11_INPUT_ELEMENT_DESC inputLayoutDesc[] =
@@ -111,8 +153,8 @@ bool Mesh::Initialize(ID3D11Device* device, ID3DBlob* vertexShaderBlob, const st
 
     // 정점 바이트 크기 멤버 변수 초기화
     m_vertexStride = sizeof(Vertex);
-    // 정점 개수 멤버 변수 초기화
-    m_vertexCount = static_cast<UINT>(vertices.size());
+    // 인덱스 개수 멤버 변수 초기화
+    m_indexCount = static_cast<UINT>(indices.size());
 
     return true;
 }
@@ -148,6 +190,14 @@ void Mesh::Draw(ID3D11DeviceContext* context)
         &offset             // 버퍼 시작점으로부터의 바이트 오프셋
     );
 
+    // 입력 조립기 단계의 인덱스 버퍼 설정
+    context->IASetIndexBuffer
+    (
+        m_indexBuffer.Get(),  // 인덱스 버퍼
+        DXGI_FORMAT_R32_UINT, // 인덱스 버퍼의 데이터 형식
+        0                     // 버퍼 시작점으로부터의 바이트 오프셋
+    );
+
     // 입력 조립기 단계의 데이터 형식 설정 
     context->IASetPrimitiveTopology
     (
@@ -156,9 +206,10 @@ void Mesh::Draw(ID3D11DeviceContext* context)
     );
 
     // Draw call 호출
-    context->Draw
+    context->DrawIndexed
     (
-        m_vertexCount,  // 그릴 정점의 총 개수
-        0               // 버퍼에서 처음으로 읽을 정점의 인덱스
+        m_indexCount,   // 그려야 할 인덱스의 총 개수
+        0,              // 버퍼에서 처음으로 읽을 인덱스
+        0               // 정점 버퍼에 더할 기준 정점 오프셋
     );
 }
