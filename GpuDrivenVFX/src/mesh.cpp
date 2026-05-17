@@ -1,18 +1,7 @@
 #include "pch.h"
 #include "mesh.h"
 
-namespace
-{
-    // 정점 정보 구조체
-    struct Vertex
-    {
-        DirectX::XMFLOAT3 position;
-        DirectX::XMFLOAT3 normal;
-        DirectX::XMFLOAT4 color;
-    };
-}
-
-bool Mesh::InitializeTriangle(ID3D11Device* device, ID3DBlob* vertexShaderBlob)
+bool Mesh::Initialize(ID3D11Device* device, ID3DBlob* vertexShaderBlob, const std::vector<Vertex>& vertices)
 {
     // 디바이스 또는 정점 셰이더 블롭이 누락된 경우
     if (!device || !vertexShaderBlob)
@@ -23,30 +12,19 @@ bool Mesh::InitializeTriangle(ID3D11Device* device, ID3DBlob* vertexShaderBlob)
         return false;
     }
 
-    // 삼각형을 구성할 정점 데이터를 담은 배열
-    const Vertex vertices[] =
+    // 정점 정보 구조체 배열이 비어 있는 경우
+    if (vertices.empty())
     {
-        {
-            DirectX::XMFLOAT3(0.0f, 0.5f, 0.0f),
-            DirectX::XMFLOAT3(0.0f, 0.0f, -1.0f),
-            DirectX::XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f)
-        },
-        {
-            DirectX::XMFLOAT3(0.4f, -0.5f, 0.0f),
-            DirectX::XMFLOAT3(0.0f, 0.0f, -1.0f),
-            DirectX::XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f)
-        },
-        {
-            DirectX::XMFLOAT3(-0.4f, -0.5f, 0.0f),
-            DirectX::XMFLOAT3(0.0f, 0.0f, -1.0f),
-            DirectX::XMFLOAT4(0.0f, 0.3f, 1.0f, 1.0f)
-        }
-    };
+        // 메시지 박스 플로팅
+        MessageBoxW(nullptr, L"Mesh vertices are empty.", L"Mesh Error", MB_OK | MB_ICONERROR);
+
+        return false;
+    }
 
     // 버퍼 설명자 구조체
     D3D11_BUFFER_DESC vertexBufferDesc = {};
     // 버퍼를 구성할 데이터 배열의 메모리 크기 설정
-    vertexBufferDesc.ByteWidth = sizeof(vertices);
+    vertexBufferDesc.ByteWidth = static_cast<UINT>(sizeof(Vertex) * vertices.size());
     // 버퍼의 사용 방식을 생성 후 변경 불가능한 읽기 전용으로 설정
     vertexBufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
     // 버퍼의 사용 용도를 파이프라인의 정점 버퍼로 지정
@@ -61,7 +39,7 @@ bool Mesh::InitializeTriangle(ID3D11Device* device, ID3DBlob* vertexShaderBlob)
     // 생성될 버퍼에 채워 넣을 초기화 데이터
     D3D11_SUBRESOURCE_DATA initialData = {};
     // 정점 데이터 배열을 초기화 데이터로 설정
-    initialData.pSysMem = vertices;
+    initialData.pSysMem = vertices.data();
 
     // 정점 버퍼 생성
     HRESULT hr = device->CreateBuffer
@@ -134,7 +112,7 @@ bool Mesh::InitializeTriangle(ID3D11Device* device, ID3DBlob* vertexShaderBlob)
     // 정점 바이트 크기 멤버 변수 초기화
     m_vertexStride = sizeof(Vertex);
     // 정점 개수 멤버 변수 초기화
-    m_vertexCount = ARRAYSIZE(vertices);
+    m_vertexCount = static_cast<UINT>(vertices.size());
 
     return true;
 }

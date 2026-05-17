@@ -29,8 +29,28 @@ bool App::Initialize(HINSTANCE hInstance, int nCmdShow)
         return false;
     }
 
+    // 삼각형을 구성할 정점 데이터를 담은 배열
+    const std::vector<Vertex> triangleVertices =
+    {
+        {
+            DirectX::XMFLOAT3(0.0f, 0.5f, 0.0f),
+            DirectX::XMFLOAT3(0.0f, 0.0f, -1.0f),
+            DirectX::XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f)
+        },
+        {
+            DirectX::XMFLOAT3(0.4f, -0.5f, 0.0f),
+            DirectX::XMFLOAT3(0.0f, 0.0f, -1.0f),
+            DirectX::XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f)
+        },
+        {
+            DirectX::XMFLOAT3(-0.4f, -0.5f, 0.0f),
+            DirectX::XMFLOAT3(0.0f, 0.0f, -1.0f),
+            DirectX::XMFLOAT4(0.0f, 0.3f, 1.0f, 1.0f)
+        }
+    };
+
     // 검증용 삼각형 메쉬 정점 리소스 초기화
-    if (!m_triangleMesh.InitializeTriangle(m_renderer.GetDevice(), m_shader.GetVertexShaderBlob()))
+    if (!m_triangleMesh.Initialize(m_renderer.GetDevice(), m_shader.GetVertexShaderBlob(), triangleVertices))
     {
         // 초기화하지 못한 경우 실패 처리
         return false;

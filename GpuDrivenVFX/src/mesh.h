@@ -1,5 +1,13 @@
 #pragma once
 
+// 정점 정보 구조체
+struct Vertex
+{
+    DirectX::XMFLOAT3 position;
+    DirectX::XMFLOAT3 normal;
+    DirectX::XMFLOAT4 color;
+};
+
 class Mesh
 {
 public:
@@ -8,8 +16,8 @@ public:
     // Mesh 클래스 소멸자
     ~Mesh() = default;
 
-    // DirectX 11 최소 렌더링 파이프라인 검증용 삼각형 정점 리소스 초기화 함수
-    bool InitializeTriangle(ID3D11Device* device, ID3DBlob* vertexShaderBlob);
+    // Mesh를 구성하는 정점 리소스 초기화 함수
+    bool Initialize(ID3D11Device* device, ID3DBlob* vertexShaderBlob, const std::vector<Vertex>& vertices);
 
     // Mesh를 그리기 위한 그래픽 파이프라인 설정 및 Draw call 호출 함수
     void Draw(ID3D11DeviceContext* context);
