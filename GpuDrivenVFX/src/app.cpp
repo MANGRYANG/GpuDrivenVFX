@@ -43,6 +43,31 @@ bool App::Initialize(HINSTANCE hInstance, int nCmdShow)
         return false;
     }
 
+    // 렌더링 화면의 세로 픽셀 크기
+    const int renderHeight = m_renderer.GetHeight();
+
+    // 랜더링 화면의 종횡비 (가로 픽셀 크기 / 세로 픽셀 크기)
+    const float aspectRatio = (renderHeight > 0)
+        ? static_cast<float>(m_renderer.GetWidth()) / static_cast<float>(renderHeight)
+        : 1.0f;
+
+    // 카메라가 바라보는 위치 설정
+    m_camera.LookAt
+    (
+        DirectX::XMFLOAT3(0.0f, 0.0f, -2.0f),
+        DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f),
+        DirectX::XMFLOAT3(0.0f, 1.0f, 0.0f)
+    );
+
+    // 카메라 원근 투영을 위한 렌즈값 설정
+    m_camera.SetLens
+    (
+        DirectX::XM_PIDIV4,     // 시야각 (45도로 설정)
+        aspectRatio,            // 화면 종횡비
+        0.1f,                   // 근평면
+        100.0f                  // 원평면
+    );
+
     // 사각형을 구성할 정점 데이터를 담은 배열
     const std::vector<Vertex> quadVertices =
     {
@@ -163,32 +188,11 @@ void App::UpdateTransformBuffer(ID3D11DeviceContext* context)
     // 월드 변환 행렬
     const DirectX::XMMATRIX world = DirectX::XMMatrixIdentity();
 
-    // 뷰 변환 행렬 매개변수 (카메라의 절대 위치)
-    const DirectX::XMVECTOR eye = DirectX::XMVectorSet(0.0f, 0.0f, -2.0f, 0.0f);
-    // 뷰 변환 행렬 매개변수 (카메라의 초점)
-    const DirectX::XMVECTOR focus = DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
-    // 뷰 변환 행렬 매개변수 (카메라의 상방 벡터)
-    const DirectX::XMVECTOR up = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-
     // 뷰 변환 행렬
-    const DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH(eye, focus, up);
-
-    // 렌더링 화면의 세로 픽셀 크기
-    const int renderHeight = m_renderer.GetHeight();
-
-    // 랜더링 화면의 종횡비 (가로 픽셀 크기 / 세로 픽셀 크기)
-    const float aspectRatio = (renderHeight > 0)
-        ? static_cast<float>(m_renderer.GetWidth()) / static_cast<float>(renderHeight)
-        : 1.0f;
+    const DirectX::XMMATRIX view = m_camera.GetViewMatrix();
 
     // 투영 변환 행렬
-    const DirectX::XMMATRIX projection = DirectX::XMMatrixPerspectiveFovLH
-    (
-        DirectX::XM_PIDIV4,     // 시야각 (45도로 설정)
-        aspectRatio,            // 화면 종횡비
-        0.1f,                   // 근평면
-        100.0f                  // 원평면
-    );
+    const DirectX::XMMATRIX projection = m_camera.GetProjectionMatrix();
 
     // 변환 버퍼 데이터 설정
     TransformBufferData transformData = {};

@@ -4,6 +4,7 @@
 #include "renderer.h"
 #include "shader.h"
 #include "mesh.h"
+#include "camera.h"
 
 class App
 {
@@ -37,6 +38,8 @@ private:
     Renderer m_renderer;
     // 애플리케이션이 관리하는 셰이더
     Shader m_shader;
+    // 애플리케이션이 관리하는 카메라
+    Camera m_camera;
     // 인덱스 버퍼 기반 사각형 렌더링을 검증하기 위한 임시 Quad 메쉬
     Mesh m_quadMesh;
 
