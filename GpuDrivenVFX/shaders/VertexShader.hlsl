@@ -1,3 +1,11 @@
+// 변환 상수 버퍼를 0번 슬롯에 바인딩
+cbuffer TransformBuffer : register(b0)
+{
+    matrix world;
+    matrix view;
+    matrix projection;
+};
+
 // Vertex Buffer으로부터 입력받는 정점의 데이터 구조체
 struct VSInput
 {
@@ -25,8 +33,18 @@ VSOutput VS_Main(VSInput input)
 {
     VSOutput output;
     
-    // GPU 파이프라인 규격에 맞게 동차 좌표계로 변환
-    output.Pos = float4(input.Pos, 1.0f);
+    // 변환 행렬 계산을 위한 동차 좌표계 전환
+    float4 position = float4(input.Pos, 1.0f);
+
+    // 로컬 좌표계에서 월드 좌표계로의 변환 수행
+    position = mul(position, world);
+    // 월드 좌표계에서 뷰 좌표계로의 변환 수행
+    position = mul(position, view);
+    // 뷰 좌표계에서 투영 좌표계로의 변환 수행
+    position = mul(position, projection);
+    
+    // 정점 위치 데이터 갱신
+    output.Pos = position;
     // 정점 노말 벡터 데이터는 변환하지 않음
     output.Normal = input.Normal;
     // 정점 색상 데이터는 변환하지 않음
