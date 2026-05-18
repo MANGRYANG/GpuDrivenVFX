@@ -1,5 +1,7 @@
 #pragma once
 
+#include <DirectXMath.h>
+
 #include "window.h"
 #include "renderer.h"
 #include "shader.h"
@@ -23,6 +25,8 @@ public:
 private:
     // 정점 셰이더에 전달할 변환 버퍼를 생성하는 함수
     bool CreateTransformBuffer();
+    // Quad의 위치, 회전, 스케일 정보를 기반으로 월드 변환 행렬을 생성하는 함수
+    DirectX::XMMATRIX BuildQuadWorldMatrix() const;
     // 현재 프레임에서 사용할 변환 행렬을 GPU에 전달하는 함수
     void UpdateTransformBuffer(ID3D11DeviceContext* context);
 
@@ -42,6 +46,13 @@ private:
     Camera m_camera;
     // 인덱스 버퍼 기반 사각형 렌더링을 검증하기 위한 임시 Quad 메쉬
     Mesh m_quadMesh;
+
+    // 월드 좌표계에서의 Quad 위치 정보
+    DirectX::XMFLOAT3 m_quadPosition = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
+    // 월드 좌표계에서의 Quad 회전 정보
+    DirectX::XMFLOAT3 m_quadRotation = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
+    // 월드 좌표계에서의 Quad 크기 배율
+    float m_quadScale = 1.0f;
 
     // 정점 셰이더에 전달할 변환 버퍼
     Microsoft::WRL::ComPtr<ID3D11Buffer> m_transformBuffer;

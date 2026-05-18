@@ -177,6 +177,36 @@ bool App::CreateTransformBuffer()
     return true;
 }
 
+DirectX::XMMATRIX App::BuildQuadWorldMatrix() const
+{
+    // 스케일 행렬 생성
+    const DirectX::XMMATRIX scale = DirectX::XMMatrixScaling
+    (
+        m_quadScale,
+        m_quadScale,
+        m_quadScale
+    );
+
+    // 회전 행렬 생성
+    const DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationRollPitchYaw
+    (
+        m_quadRotation.x,
+        m_quadRotation.y,
+        m_quadRotation.z
+    );
+
+    // 이동 행렬 생성
+    const DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation
+    (
+        m_quadPosition.x,
+        m_quadPosition.y,
+        m_quadPosition.z
+    );
+
+    // 변환 행렬 계산 (SRT)
+    return scale * rotation * translation;
+}
+
 void App::UpdateTransformBuffer(ID3D11DeviceContext* context)
 {
     // 디바이스 컨텍스트나 변환 버퍼가 누락된 경우 실패 처리
@@ -186,7 +216,7 @@ void App::UpdateTransformBuffer(ID3D11DeviceContext* context)
     }
 
     // 월드 변환 행렬
-    const DirectX::XMMATRIX world = DirectX::XMMatrixIdentity();
+    const DirectX::XMMATRIX world = BuildQuadWorldMatrix();
 
     // 뷰 변환 행렬
     const DirectX::XMMATRIX view = m_camera.GetViewMatrix();
