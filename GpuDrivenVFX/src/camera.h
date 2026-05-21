@@ -21,12 +21,15 @@ public:
     // 투영 변환 행렬 Getter
     DirectX::XMMATRIX GetProjectionMatrix() const;
 
+    // 뷰 좌표계 기저 벡터를 계산하는 함수
+    void GetCameraAxes(DirectX::XMFLOAT3& right, DirectX::XMFLOAT3& up, DirectX::XMFLOAT3& forward) const;
+
 private:
-    // 카메라의 절대 위치
+    // 카메라의 월드 공간 상 위치
     DirectX::XMFLOAT3 m_position = DirectX::XMFLOAT3(0.0f, 0.0f, -2.0f);
-    // 카메라의 초점
+    // 카메라가 주시하는 타겟의 지점
     DirectX::XMFLOAT3 m_target = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
-    // 카메라의 상방 벡터
+    // 카메라의 월드 상방 참조 벡터
     DirectX::XMFLOAT3 m_up = DirectX::XMFLOAT3(0.0f, 1.0f, 0.0f);
 
     // 카메라 시야각 (45도로 초기화)
