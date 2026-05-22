@@ -7,6 +7,7 @@
 #include "shader.h"
 #include "mesh.h"
 #include "camera.h"
+#include "billboard_renderer.h"
 
 class App
 {
@@ -46,6 +47,8 @@ private:
     Camera m_camera;
     // 인덱스 버퍼 기반 사각형 렌더링을 검증하기 위한 임시 Quad 메쉬
     Mesh m_quadMesh;
+    // Billboard Quad 렌더링을 검증하기 위한 렌더러
+    BillboardRenderer m_billboardRenderer;
 
     // 월드 좌표계에서의 Quad 위치 정보
     DirectX::XMFLOAT3 m_quadPosition = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
