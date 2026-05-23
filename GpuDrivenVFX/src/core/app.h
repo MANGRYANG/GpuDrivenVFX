@@ -3,12 +3,14 @@
 #include <DirectXMath.h>
 #include <vector>
 
-#include "window.h"
-#include "renderer.h"
-#include "shader.h"
-#include "mesh.h"
-#include "camera.h"
-#include "billboard_renderer.h"
+#include "platform/window.h"
+
+#include "rendering/renderer.h"
+#include "rendering/shader.h"
+#include "rendering/billboard_renderer.h"
+
+#include "graphics/mesh.h"
+#include "graphics/camera.h"
 
 class App
 {

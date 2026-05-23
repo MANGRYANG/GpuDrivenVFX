@@ -3,8 +3,9 @@
 #include <DirectXMath.h>
 #include <vector>
 
-#include "shader.h"
-#include "camera.h"
+#include "rendering/shader.h"
+
+#include "graphics/camera.h"
 
 // Billboard Quad 정보 구조체
 struct Billboard

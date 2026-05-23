@@ -3,23 +3,23 @@
   <ItemGroup>
     <ClCompile Include="src\pch.cpp" />
     <ClCompile Include="src\main.cpp" />
-    <ClCompile Include="src\window.cpp" />
-    <ClCompile Include="src\app.cpp" />
-    <ClCompile Include="src\renderer.cpp" />
-    <ClCompile Include="src\shader.cpp" />
-    <ClCompile Include="src\mesh.cpp" />
-    <ClCompile Include="src\camera.cpp" />
-    <ClCompile Include="src\billboard_renderer.cpp" />
+    <ClCompile Include="src\platform\window.cpp" />
+    <ClCompile Include="src\core\app.cpp" />
+    <ClCompile Include="src\rendering\renderer.cpp" />
+    <ClCompile Include="src\rendering\shader.cpp" />
+    <ClCompile Include="src\graphics\mesh.cpp" />
+    <ClCompile Include="src\graphics\camera.cpp" />
+    <ClCompile Include="src\rendering\billboard_renderer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\pch.h" />
-    <ClInclude Include="src\window.h" />
-    <ClInclude Include="src\app.h" />
-    <ClInclude Include="src\renderer.h" />
-    <ClInclude Include="src\shader.h" />
-    <ClInclude Include="src\mesh.h" />
-    <ClInclude Include="src\camera.h" />
-    <ClInclude Include="src\billboard_renderer.h" />
+    <ClInclude Include="src\platform\window.h" />
+    <ClInclude Include="src\core\app.h" />
+    <ClInclude Include="src\rendering\renderer.h" />
+    <ClInclude Include="src\rendering\shader.h" />
+    <ClInclude Include="src\graphics\mesh.h" />
+    <ClInclude Include="src\graphics\camera.h" />
+    <ClInclude Include="src\rendering\billboard_renderer.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="shaders\VertexShader.hlsl" />
