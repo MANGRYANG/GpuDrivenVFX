@@ -36,7 +36,7 @@ namespace
     static_assert(sizeof(BillboardInfoBufferData) % 16 == 0, "Constant buffer size must be 16-byte aligned.(BillboardInfoBuffer)");
 }
 
-bool BillboardRenderer::Initialize(ID3D11Device* device, const DirectX::XMFLOAT3& position, float size, const DirectX::XMFLOAT4& color)
+bool BillboardRenderer::Initialize(ID3D11Device* device)
 {
     // 디바이스가 누락된 경우
     if (!device)
@@ -46,11 +46,6 @@ bool BillboardRenderer::Initialize(ID3D11Device* device, const DirectX::XMFLOAT3
 
         return false;
     }
-
-    // Billboard 기본 속성 설정
-    m_position = position;
-    m_size = size;
-    m_color = color;
 
     // Billboard 렌더링용 셰이더 컴파일 및 생성
     if (!m_shader.Initialize(device, L"shaders/BillboardVertexShader.hlsl", L"shaders/BillboardPixelShader.hlsl"))
@@ -337,18 +332,18 @@ bool BillboardRenderer::CreateBillboardInfoBuffer(ID3D11Device* device)
     return true;
 }
 
-DirectX::XMMATRIX BillboardRenderer::BuildBillboardWorldMatrix() const
+DirectX::XMMATRIX BillboardRenderer::BuildBillboardWorldMatrix(const DirectX::XMFLOAT3& position) const
 {
     // Billboard 중심 위치를 월드 공간으로 옮기는 이동 행렬 생성
     return DirectX::XMMatrixTranslation
     (
-        m_position.x,
-        m_position.y,
-        m_position.z
+        position.x,
+        position.y,
+        position.z
     );
 }
 
-void BillboardRenderer::UpdateTransformBuffer(ID3D11DeviceContext* context, const Camera& camera)
+void BillboardRenderer::UpdateTransformBuffer(ID3D11DeviceContext* context, const Camera& camera, const DirectX::XMFLOAT3& position)
 {
     // 디바이스 컨텍스트나 변환 버퍼가 누락된 경우 실패 처리
     if (!context || !m_transformBuffer.Get())
@@ -357,7 +352,7 @@ void BillboardRenderer::UpdateTransformBuffer(ID3D11DeviceContext* context, cons
     }
 
     // Billboard 중심 위치에 적용할 월드 변환 행렬
-    const DirectX::XMMATRIX world = BuildBillboardWorldMatrix();
+    const DirectX::XMMATRIX world = BuildBillboardWorldMatrix(position);
 
     // 뷰 변환 행렬
     const DirectX::XMMATRIX view = camera.GetViewMatrix();
@@ -383,7 +378,7 @@ void BillboardRenderer::UpdateTransformBuffer(ID3D11DeviceContext* context, cons
     );
 }
 
-void BillboardRenderer::UpdateBillboardInfoBuffer(ID3D11DeviceContext* context, const Camera& camera)
+void BillboardRenderer::UpdateBillboardInfoBuffer(ID3D11DeviceContext* context, const Camera& camera, const Billboard& billboard)
 {
     // 디바이스 컨텍스트나 Billboard 정보 버퍼가 누락된 경우 실패 처리
     if (!context || !m_billboardInfoBuffer.Get())
@@ -401,10 +396,10 @@ void BillboardRenderer::UpdateBillboardInfoBuffer(ID3D11DeviceContext* context, 
     // Billboard 정보 버퍼 데이터 설정
     BillboardInfoBufferData billboardInfoData = {};
     billboardInfoData.cameraRight = cameraRight;
-    billboardInfoData.billboardSize = m_size;
+    billboardInfoData.billboardSize = billboard.size;
     billboardInfoData.cameraUp = cameraUp;
     billboardInfoData.padding = 0.0f;
-    billboardInfoData.billboardColor = m_color;
+    billboardInfoData.billboardColor = billboard.color;
 
     // CPU 메모리의 Billboard 정보 버퍼 데이터를 GPU 버퍼에 업데이트
     context->UpdateSubresource
@@ -418,7 +413,7 @@ void BillboardRenderer::UpdateBillboardInfoBuffer(ID3D11DeviceContext* context, 
     );
 }
 
-void BillboardRenderer::Render(ID3D11DeviceContext* context, const Camera& camera)
+void BillboardRenderer::Render(ID3D11DeviceContext* context, const Camera& camera, const std::vector<Billboard>& billboards)
 {
     // 디바이스 컨텍스트가 누락된 경우 실패 처리
     if (!context)
@@ -426,14 +421,14 @@ void BillboardRenderer::Render(ID3D11DeviceContext* context, const Camera& camer
         return;
     }
 
+    // 렌더링할 Billboard가 없는 경우 처리하지 않음
+    if (billboards.empty())
+    {
+        return;
+    }
+
     // Billboard 렌더링용 셰이더 바인딩
     m_shader.Bind(context);
-
-    // 현재 프레임에서 사용할 Billboard 변환 버퍼 갱신
-    UpdateTransformBuffer(context, camera);
-
-    // 현재 프레임에서 사용할 Billboard 정보 버퍼 갱신
-    UpdateBillboardInfoBuffer(context, camera);
 
     // 파이프라인 입력 슬롯에 전달할 상수 버퍼 포인터 배열
     ID3D11Buffer* constantBuffers[] =
@@ -486,11 +481,21 @@ void BillboardRenderer::Render(ID3D11DeviceContext* context, const Camera& camer
         D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST
     );
 
-    // Draw call 호출
-    context->DrawIndexed
-    (
-        m_indexCount,
-        0,
-        0
-    );
+    // Billboard 데이터 목록을 순회하며 각각의 위치, 크기, 색상으로 렌더링
+    for (const Billboard& billboard : billboards)
+    {
+        // 현재 Billboard의 위치를 기준으로 변환 버퍼 갱신
+        UpdateTransformBuffer(context, camera, billboard.position);
+
+        // 현재 Billboard의 크기, 색상, 카메라 기준 축 정보 갱신
+        UpdateBillboardInfoBuffer(context, camera, billboard);
+
+        // 현재 Billboard Quad 렌더링
+        context->DrawIndexed
+        (
+            m_indexCount,
+            0,
+            0
+        );
+    }
 }

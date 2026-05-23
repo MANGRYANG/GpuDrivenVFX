@@ -114,15 +114,28 @@ bool App::Initialize(HINSTANCE hInstance, int nCmdShow)
         return false;
     }
 
-    // Billboard 중심점의 월드 좌표
-    const DirectX::XMFLOAT3 billboardWorldPosition = DirectX::XMFLOAT3(1.0f, 0.0f, 0.0f);
-    // Billboard Quad 크기
-    const float billboardSize = 0.2f;
-    // Billboard 색상
-    const DirectX::XMFLOAT4 billboardColor = DirectX::XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f);
+    // 렌더링할 Billboard Quad 구조체 리스트
+    m_billboards =
+    {
+        {
+            DirectX::XMFLOAT3(1.0f, 0.0f, 0.0f),
+            0.2f,
+            DirectX::XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f)
+        },
+        {
+            DirectX::XMFLOAT3(-1.0f, 0.0f, 0.0f),
+            0.25f,
+            DirectX::XMFLOAT4(0.0f, 1.0f, 1.0f, 1.0f)
+        },
+        {
+            DirectX::XMFLOAT3(0.0f, 0.6f, 0.0f),
+            0.15f,
+            DirectX::XMFLOAT4(1.0f, 0.4f, 0.1f, 1.0f)
+        }
+    };
 
     // Billboard Quad 렌더링에 필요한 리소스 초기화
-    if (!m_billboardRenderer.Initialize(m_renderer.GetDevice(), billboardWorldPosition, billboardSize, billboardColor))
+    if (!m_billboardRenderer.Initialize(m_renderer.GetDevice()))
     {
         // 초기화하지 못한 경우 실패 처리
         return false;
@@ -293,8 +306,8 @@ void App::Render()
     // 인덱스 버퍼 기반 사각형 그리기
     m_quadMesh.Draw(m_renderer.GetContext());
 
-    // 단일 Billboard Quad 렌더링
-    m_billboardRenderer.Render(m_renderer.GetContext(), m_camera);
+    // Billboard Quads 렌더링
+    m_billboardRenderer.Render(m_renderer.GetContext(), m_camera, m_billboards);
 
     // 최종 화면 출력
     m_renderer.EndFrame();

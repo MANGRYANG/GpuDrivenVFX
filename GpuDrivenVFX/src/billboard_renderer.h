@@ -1,9 +1,21 @@
 #pragma once
 
 #include <DirectXMath.h>
+#include <vector>
 
 #include "shader.h"
 #include "camera.h"
+
+// Billboard Quad 정보 구조체
+struct Billboard
+{
+    // Billboard Quad의 월드 공간 위치
+    DirectX::XMFLOAT3 position;
+    // Billboard Quad의 크기
+    float size;
+    // Billboard Quad의 색상
+    DirectX::XMFLOAT4 color;
+};
 
 class BillboardRenderer
 {
@@ -14,10 +26,10 @@ public:
     ~BillboardRenderer() = default;
 
     // Billboard 렌더링에 필요한 GPU 리소스를 초기화하는 함수
-    bool Initialize(ID3D11Device* device, const DirectX::XMFLOAT3& position, float size, const DirectX::XMFLOAT4& color);
+    bool Initialize(ID3D11Device* device);
 
     // 단일 Billboard Quad를 렌더링하는 함수
-    void Render(ID3D11DeviceContext* context, const Camera& camera);
+    void Render(ID3D11DeviceContext* context, const Camera& camera, const std::vector<Billboard>& billboards);
 
 private:
     // Billboard 정점/인덱스 버퍼와 입력 레이아웃을 생성하는 함수
@@ -30,13 +42,13 @@ private:
     bool CreateBillboardInfoBuffer(ID3D11Device* device);
 
     // Billboard 중심점에 적용할 월드 변환 행렬을 생성하는 함수
-    DirectX::XMMATRIX BuildBillboardWorldMatrix() const;
+    DirectX::XMMATRIX BuildBillboardWorldMatrix(const DirectX::XMFLOAT3& position) const;
 
     // 현재 프레임에서 사용할 Billboard 변환 행렬을 갱신하는 함수
-    void UpdateTransformBuffer(ID3D11DeviceContext* context, const Camera& camera);
+    void UpdateTransformBuffer(ID3D11DeviceContext* context, const Camera& camera, const DirectX::XMFLOAT3& position);
 
     // 현재 카메라 기준으로 Billboard를 펼치기 위한 정보를 갱신하는 함수
-    void UpdateBillboardInfoBuffer(ID3D11DeviceContext* context, const Camera& camera);
+    void UpdateBillboardInfoBuffer(ID3D11DeviceContext* context, const Camera& camera, const Billboard& billboard);
 
 private:
     // Billboard 렌더링에 사용할 셰이더
@@ -58,11 +70,4 @@ private:
     UINT m_vertexStride = 0;
     // 그려야 할 인덱스의 총 개수
     UINT m_indexCount = 0;
-
-    // 단일 Billboard Quad의 월드 공간 위치
-    DirectX::XMFLOAT3 m_position;
-    // 단일 Billboard Quad의 크기
-    float m_size;
-    // 단일 Billboard Quad의 색상
-    DirectX::XMFLOAT4 m_color;
 };
