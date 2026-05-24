@@ -281,15 +281,6 @@ void App::Render()
     // 프레임 드로우 준비 및 배경 색 초기화 (#0D141F)
     m_renderer.BeginFrame(0.05f, 0.08f, 0.12f, 1.0f);
 
-    // 셰이더 바인딩
-    m_shader.Bind(m_renderer.GetContext());
-
-    // 이번 프레임에서 사용할 변환 행렬을 정점 셰이더에 전달
-    UpdateTransformBuffer(m_renderer.GetContext());
-
-    // 인덱스 버퍼 기반 사각형 그리기
-    m_quadMesh.Draw(m_renderer.GetContext());
-
     // Billboard Quads 렌더링
     m_billboardRenderer.Render(m_renderer.GetContext(), m_camera, m_cpuParticleSystem.GetBillboards());
 
