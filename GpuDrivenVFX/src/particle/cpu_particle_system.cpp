@@ -13,7 +13,7 @@ void CpuParticleSystem::Initialize()
     {
         {
             DirectX::XMFLOAT3(1.0f, 0.0f, 0.0f),
-            DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f),
+            DirectX::XMFLOAT3(0.02f, 0.0f, 0.3f),
             0.2f,
             1.0f,
             0.0f,
@@ -22,7 +22,7 @@ void CpuParticleSystem::Initialize()
         },
         {
             DirectX::XMFLOAT3(-1.0f, 0.0f, 0.0f),
-            DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f),
+            DirectX::XMFLOAT3(0.05f, 0.0f, -0.1f),
             0.25f,
             1.0f,
             0.0f,
@@ -31,7 +31,7 @@ void CpuParticleSystem::Initialize()
         },
         {
             DirectX::XMFLOAT3(0.0f, 0.6f, 0.0f),
-            DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f),
+            DirectX::XMFLOAT3(0.0f, -0.06f, 0.0f),
             0.15f,
             1.0f,
             0.0f,
@@ -46,8 +46,18 @@ void CpuParticleSystem::Initialize()
 
 void CpuParticleSystem::Update(float deltaTime)
 {
-    // 실제 Particle 시뮬레이션 코드는 이후 작성
-    (void)deltaTime;
+    // Particle 위치 갱신
+    for (Particle& particle : m_particles)
+    {
+        if (!particle.active)
+        {
+            continue;
+        }
+
+        particle.position.x += particle.velocity.x * deltaTime;
+        particle.position.y += particle.velocity.y * deltaTime;
+        particle.position.z += particle.velocity.z * deltaTime;
+    }
 
     // 현재 Particle 상태를 렌더링용 Billboard 목록으로 변환
     RebuildBillboards();
