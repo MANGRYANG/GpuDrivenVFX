@@ -114,25 +114,8 @@ bool App::Initialize(HINSTANCE hInstance, int nCmdShow)
         return false;
     }
 
-    // 렌더링할 Billboard Quad 구조체 리스트
-    m_billboards =
-    {
-        {
-            DirectX::XMFLOAT3(1.0f, 0.0f, 0.0f),
-            0.2f,
-            DirectX::XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f)
-        },
-        {
-            DirectX::XMFLOAT3(-1.0f, 0.0f, 0.0f),
-            0.25f,
-            DirectX::XMFLOAT4(0.0f, 1.0f, 1.0f, 1.0f)
-        },
-        {
-            DirectX::XMFLOAT3(0.0f, 0.6f, 0.0f),
-            0.15f,
-            DirectX::XMFLOAT4(1.0f, 0.4f, 0.1f, 1.0f)
-        }
-    };
+    // CPU Particle System 초기화
+    m_cpuParticleSystem.Initialize();
 
     // Billboard Quad 렌더링에 필요한 리소스 초기화
     if (!m_billboardRenderer.Initialize(m_renderer.GetDevice()))
@@ -289,7 +272,8 @@ void App::UpdateTransformBuffer(ID3D11DeviceContext* context)
 
 void App::Update()
 {
-    // 이후 작성
+    // 임시 고정 deltaTime 값으로 CPU Particle System 업데이트
+    m_cpuParticleSystem.Update(0.016f);
 }
 
 void App::Render()
@@ -307,7 +291,7 @@ void App::Render()
     m_quadMesh.Draw(m_renderer.GetContext());
 
     // Billboard Quads 렌더링
-    m_billboardRenderer.Render(m_renderer.GetContext(), m_camera, m_billboards);
+    m_billboardRenderer.Render(m_renderer.GetContext(), m_camera, m_cpuParticleSystem.GetBillboards());
 
     // 최종 화면 출력
     m_renderer.EndFrame();

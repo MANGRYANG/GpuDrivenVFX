@@ -12,6 +12,8 @@
 #include "graphics/mesh.h"
 #include "graphics/camera.h"
 
+#include "particle/cpu_particle_system.h"
+
 class App
 {
 public:
@@ -52,8 +54,8 @@ private:
     Mesh m_quadMesh;
     // Billboard Quad 렌더링을 검증하기 위한 렌더러
     BillboardRenderer m_billboardRenderer;
-    // Billboard Quad 구조체 리스트
-    std::vector<Billboard> m_billboards;
+    // CPU 기반 Particle 데이터를 관리하는 시스템
+    CpuParticleSystem m_cpuParticleSystem;
 
     // 월드 좌표계에서의 Quad 위치 정보
     DirectX::XMFLOAT3 m_quadPosition = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
