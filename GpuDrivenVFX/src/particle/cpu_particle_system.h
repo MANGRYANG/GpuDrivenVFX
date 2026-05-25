@@ -1,6 +1,7 @@
 #pragma once
 
 #include <DirectXMath.h>
+#include <cstddef>
 #include <vector>
 
 #include "rendering/billboard_renderer.h"
@@ -9,19 +10,19 @@
 struct Particle
 {
     // Particle의 월드 공간 위치
-    DirectX::XMFLOAT3 position;
+    DirectX::XMFLOAT3 position = DirectX::XMFLOAT3(0, 0, 0);
     // Particle의 이동 속도
-    DirectX::XMFLOAT3 velocity;
+    DirectX::XMFLOAT3 velocity = DirectX::XMFLOAT3(0, 0, 0);
     // Particle을 Billboard로 렌더링할 때 사용할 크기
-    float size;
+    float size = 0.0;
     // Particle의 총 생존 시간
-    float lifetime;
+    float lifetime = 0.0;
     // Particle이 생성된 뒤 경과한 시간
-    float age;
+    float age = 0.0;
     // Particle을 Billboard로 렌더링할 때 사용할 색상
-    DirectX::XMFLOAT4 color;
+    DirectX::XMFLOAT4 color = DirectX::XMFLOAT4(0, 0, 0, 0);
     // 현재 Particle이 활성 상태인지 여부
-    bool active;
+    bool active = false;
 };
 
 class CpuParticleSystem
@@ -42,10 +43,23 @@ public:
     const std::vector<Billboard>& GetBillboards() const;
 
 private:
+    // 비활성 Particle 슬롯에 새로운 Particle 데이터를 생성하는 함수
+    bool SpawnParticle
+    (
+        const DirectX::XMFLOAT3& position,
+        const DirectX::XMFLOAT3& velocity,
+        float size,
+        float lifetime,
+        const DirectX::XMFLOAT4& color
+    );
+
     // 활성 Particle 목록을 렌더링용 Billboard 목록으로 변환하는 함수
     void RebuildBillboards();
 
 private:
+    // 현재 테스트 단계에서 사용할 최대 Particle 개수
+    static constexpr std::size_t MaxParticleCount = 4;
+
     // CPU에서 관리하는 Particle 데이터 목록
     std::vector<Particle> m_particles;
     // BillboardRenderer에 전달할 렌더링용 Billboard 목록
