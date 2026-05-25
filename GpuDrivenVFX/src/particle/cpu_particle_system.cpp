@@ -44,6 +44,21 @@ const std::vector<Billboard>& CpuParticleSystem::GetBillboards() const
     return m_billboards;
 }
 
+std::size_t CpuParticleSystem::GetRenderParticleCount() const
+{
+    return m_billboards.size();
+}
+
+std::size_t CpuParticleSystem::GetDroppedSpawnCount() const
+{
+    return m_droppedSpawnCount;
+}
+
+std::size_t CpuParticleSystem::GetMaxParticleCount() const
+{
+    return MaxParticleCount;
+}
+
 bool CpuParticleSystem::SpawnParticle
 (
     const DirectX::XMFLOAT3& position,
@@ -81,6 +96,7 @@ bool CpuParticleSystem::SpawnParticle
     }
 
     // 사용 가능한 비활성 Particle 슬롯이 없는 경우
+    ++m_droppedSpawnCount;
     return false;
 }
 

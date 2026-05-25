@@ -61,6 +61,13 @@ public:
     // 렌더링에 사용할 Billboard 목록을 반환하는 함수
     const std::vector<Billboard>& GetBillboards() const;
 
+    // 현재 렌더링되고 있는 Particle의 개수를 반환하는 함수 
+    std::size_t GetRenderParticleCount() const;
+    // 생성에 실패하여 누락된 Particle 생성 요청 개수를 반환하는 함수
+    std::size_t GetDroppedSpawnCount() const;
+    // 렌더링 가능한 최대 Particle 개수를 반환하는 함수
+    std::size_t GetMaxParticleCount() const;
+
 private:
     // 비활성 Particle 슬롯에 새로운 Particle 데이터를 생성하는 함수
     bool SpawnParticle
@@ -92,4 +99,7 @@ private:
     std::vector<Particle> m_particles;
     // BillboardRenderer에 전달할 렌더링용 Billboard 목록
     std::vector<Billboard> m_billboards;
+
+    // 생성에 실패하여 누락된 Particle 생성 요청 개수
+    std::size_t m_droppedSpawnCount = 0;
 };
