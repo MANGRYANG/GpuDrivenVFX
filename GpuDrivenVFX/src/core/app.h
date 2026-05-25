@@ -3,6 +3,8 @@
 #include <DirectXMath.h>
 #include <vector>
 
+#include "core/frame_timer.h"
+
 #include "platform/window.h"
 
 #include "rendering/renderer.h"
@@ -44,6 +46,8 @@ private:
 private:
     // 애플리케이션이 관리하는 윈도우
     Window m_window;
+    // 애플리케이션이 관리하는 타이머
+    FrameTimer m_frameTimer;
     // 애플리케이션이 관리하는 렌더러
     Renderer m_renderer;
     // 애플리케이션이 관리하는 셰이더

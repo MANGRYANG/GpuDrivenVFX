@@ -124,6 +124,9 @@ bool App::Initialize(HINSTANCE hInstance, int nCmdShow)
         return false;
     }
 
+    // 프레임 시간 측정을 위한 타이머 초기화
+    m_frameTimer.Initialize();
+
     return true;
 }
 
@@ -272,8 +275,11 @@ void App::UpdateTransformBuffer(ID3D11DeviceContext* context)
 
 void App::Update()
 {
-    // 임시 고정 deltaTime 값으로 CPU Particle System 업데이트
-    m_cpuParticleSystem.Update(0.016f);
+    // 현재 프레임의 deltaTime 갱신
+    m_frameTimer.Tick();
+
+    // 실제 deltaTime 값으로 CPU Particle System 업데이트
+    m_cpuParticleSystem.Update(m_frameTimer.GetDeltaTime());
 }
 
 void App::Render()
