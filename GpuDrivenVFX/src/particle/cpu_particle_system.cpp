@@ -11,42 +11,17 @@ void CpuParticleSystem::Initialize()
     // 테스트 단계에서 사용할 Particle 슬롯 공간 확보
     m_particles.resize(MaxParticleCount);
 
-    // 초기 테스트 Particle 생성
-    SpawnParticle
-    (
-        DirectX::XMFLOAT3(-0.5f, 0.5f, 1.0f),
-        DirectX::XMFLOAT3(0.25f, 0.0f, -0.25f),
-        0.25f,
-        1.0f,
-        DirectX::XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f)
-    );
-
-    SpawnParticle
-    (
-        DirectX::XMFLOAT3(0.5f, 0.5f, 0.0f),
-        DirectX::XMFLOAT3(0.0f, -0.25f, 0.25f),
-        0.25f,
-        3.0f,
-        DirectX::XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f)
-    );
-
-    SpawnParticle
-    (
-        DirectX::XMFLOAT3(0.5f, -0.5f, 1.0f),
-        DirectX::XMFLOAT3(-0.25f, 0.0f, -0.25f),
-        0.25f,
-        5.0f,
-        DirectX::XMFLOAT4(0.0f, 0.0f, 0.1f, 1.0f)
-    );
-
-    SpawnParticle
-    (
-        DirectX::XMFLOAT3(-0.5f, -0.5f, 0.0f),
-        DirectX::XMFLOAT3(0.0f, 0.25f, 0.25f),
-        0.25f,
-        7.0f,
-        DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f)
-    );
+    // Emitter 상태 초기화
+    m_emitter = ParticleEmitter
+    {
+        DirectX::XMFLOAT3(0.0f, -0.5f, 0.0f),       // 초기 월드 공간 위치
+        DirectX::XMFLOAT3(0.0f, 0.25f, 0.0f),       // 초기 이동 속도
+        0.01f,                                      // 크기
+        4.0f,                                       // 생존 시간
+        8.0f,                                       // 초당 생성해야 하는 Particle 개수
+        0.0f,                                       // 프레임마다 누적되는 생성 요청 수
+        DirectX::XMFLOAT4(1.0f, 0.65f, 0.1f, 1.0f)  // Particle 색상
+    };
 
     // 초기 Particle 데이터를 렌더링용 Billboard 목록으로 변환
     RebuildBillboards();
@@ -55,28 +30,10 @@ void CpuParticleSystem::Initialize()
 void CpuParticleSystem::Update(float deltaTime)
 {
     // 활성 Particle의 수명 및 위치 갱신
-    for (Particle& particle : m_particles)
-    {
-        if (!particle.active)
-        {
-            continue;
-        }
+    UpdateParticles(deltaTime);
 
-        // 활성 Particle의 생존 시간 누적
-        particle.age += deltaTime;
-        
-        // 수명이 끝난 Particle은 비활성화
-        if (particle.age >= particle.lifetime)
-        {
-            particle.active = false;
-            continue;
-        }
-
-        // 활성 Particle의 위치를 속도와 deltaTime 기반으로 갱신
-        particle.position.x += particle.velocity.x * deltaTime;
-        particle.position.y += particle.velocity.y * deltaTime;
-        particle.position.z += particle.velocity.z * deltaTime;
-    }
+    // Emitter의 spawnRate를 기준으로 새 Particle 생성 
+    EmitParticles(deltaTime);
 
     // 현재 Particle 상태를 렌더링용 Billboard 목록으로 변환
     RebuildBillboards();
@@ -125,6 +82,62 @@ bool CpuParticleSystem::SpawnParticle
 
     // 사용 가능한 비활성 Particle 슬롯이 없는 경우
     return false;
+}
+
+void CpuParticleSystem::UpdateParticles(float deltaTime)
+{
+    // 활성 Particle의 수명 및 위치 갱신
+    for (Particle& particle : m_particles)
+    {
+        if (!particle.active)
+        {
+            continue;
+        }
+
+        // 활성 Particle의 생존 시간 누적
+        particle.age += deltaTime;
+
+        // 수명이 끝난 Particle은 비활성화
+        if (particle.age >= particle.lifetime)
+        {
+            particle.active = false;
+            continue;
+        }
+
+        // 활성 Particle의 위치를 속도와 deltaTime 기반으로 갱신
+        particle.position.x += particle.velocity.x * deltaTime;
+        particle.position.y += particle.velocity.y * deltaTime;
+        particle.position.z += particle.velocity.z * deltaTime;
+    }
+}
+
+void CpuParticleSystem::EmitParticles(float deltaTime)
+{
+    // 생성해야 할 Particle 누적 개수 계산
+    m_emitter.spawnAccumulator += m_emitter.spawnRate * deltaTime;
+
+    // 누적된 생성 요청이 1개 이상이면 Particle 생성 시도
+    while (m_emitter.spawnAccumulator >= 1.0f)
+    {
+        // Emitter 설정을 기반으로 새 Particle 생성 요청
+        const bool spawned = SpawnParticle
+        (
+            m_emitter.position,
+            m_emitter.velocity,
+            m_emitter.particleSize,
+            m_emitter.particleLifetime,
+            m_emitter.particleColor
+        );
+
+        // 생성 요청 하나를 처리했으므로 누적 값 감소
+        m_emitter.spawnAccumulator -= 1.0f;
+
+        // 비활성 슬롯이 없어 생성하지 못한 경우 현재 프레임의 추가 생성 시도 중단
+        if (!spawned)
+        {
+            break;
+        }
+    }
 }
 
 void CpuParticleSystem::RebuildBillboards()

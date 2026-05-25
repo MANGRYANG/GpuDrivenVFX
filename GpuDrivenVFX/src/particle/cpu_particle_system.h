@@ -25,6 +25,25 @@ struct Particle
     bool active = false;
 };
 
+// Particle을 일정 비율로 생성하기 위한 Emitter 상태 구조체
+struct ParticleEmitter
+{
+    // Particle이 생성될 월드 공간 위치
+    DirectX::XMFLOAT3 position = DirectX::XMFLOAT3(0, 0, 0);
+    // 생성될 Particle의 초기 이동 속도
+    DirectX::XMFLOAT3 velocity = DirectX::XMFLOAT3(0, 0, 0);
+    // 생성될 Particle의 크기
+    float particleSize = 0.0f;
+    // 생성될 Particle의 생존 시간
+    float particleLifetime = 0.0f;
+    // 초당 생성할 Particle 개수
+    float spawnRate = 0.0f;
+    // 프레임마다 누적되는 생성 요청 수
+    float spawnAccumulator = 0.0f;
+    // 생성될 Particle의 색상
+    DirectX::XMFLOAT4 particleColor = DirectX::XMFLOAT4(0, 0, 0, 0);
+};
+
 class CpuParticleSystem
 {
 public:
@@ -53,12 +72,21 @@ private:
         const DirectX::XMFLOAT4& color
     );
 
+    // 활성 상태의 Particle 수명 및 위치를 갱신하는 함수
+    void UpdateParticles(float deltaTime);
+
+    // Emitter의 누적 생성 요청을 처리하는 함수
+    void EmitParticles(float deltaTime);
+
     // 활성 Particle 목록을 렌더링용 Billboard 목록으로 변환하는 함수
     void RebuildBillboards();
 
 private:
     // 현재 테스트 단계에서 사용할 최대 Particle 개수
-    static constexpr std::size_t MaxParticleCount = 4;
+    static constexpr std::size_t MaxParticleCount = 64;
+
+    // CPU Particle 생성 상태를 관리하는 Emitter
+    ParticleEmitter m_emitter;
 
     // CPU에서 관리하는 Particle 데이터 목록
     std::vector<Particle> m_particles;
