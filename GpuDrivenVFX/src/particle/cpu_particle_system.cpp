@@ -15,7 +15,7 @@ void CpuParticleSystem::Initialize()
             DirectX::XMFLOAT3(1.0f, 0.0f, 0.0f),
             DirectX::XMFLOAT3(0.02f, 0.0f, 0.3f),
             0.2f,
-            1.0f,
+            3.0f,
             0.0f,
             DirectX::XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f),
             true
@@ -24,7 +24,7 @@ void CpuParticleSystem::Initialize()
             DirectX::XMFLOAT3(-1.0f, 0.0f, 0.0f),
             DirectX::XMFLOAT3(0.05f, 0.0f, -0.1f),
             0.25f,
-            1.0f,
+            5.0f,
             0.0f,
             DirectX::XMFLOAT4(0.0f, 1.0f, 1.0f, 1.0f),
             true
@@ -33,7 +33,7 @@ void CpuParticleSystem::Initialize()
             DirectX::XMFLOAT3(0.0f, 0.6f, 0.0f),
             DirectX::XMFLOAT3(0.0f, -0.06f, 0.0f),
             0.15f,
-            1.0f,
+            7.0f,
             0.0f,
             DirectX::XMFLOAT4(1.0f, 0.4f, 0.1f, 1.0f),
             true
@@ -46,7 +46,7 @@ void CpuParticleSystem::Initialize()
 
 void CpuParticleSystem::Update(float deltaTime)
 {
-    // Particle 위치 갱신
+    // 활성 Particle의 수명 및 위치 갱신
     for (Particle& particle : m_particles)
     {
         if (!particle.active)
@@ -54,6 +54,17 @@ void CpuParticleSystem::Update(float deltaTime)
             continue;
         }
 
+        // 활성 Particle의 생존 시간 누적
+        particle.age += deltaTime;
+        
+        // 수명이 끝난 Particle은 비활성화
+        if (particle.age >= particle.lifetime)
+        {
+            particle.active = false;
+            continue;
+        }
+
+        // 활성 Particle의 위치를 속도와 deltaTime 기반으로 갱신
         particle.position.x += particle.velocity.x * deltaTime;
         particle.position.y += particle.velocity.y * deltaTime;
         particle.position.z += particle.velocity.z * deltaTime;

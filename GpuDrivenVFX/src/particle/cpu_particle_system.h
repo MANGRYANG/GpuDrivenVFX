@@ -35,7 +35,7 @@ public:
     // CPU Particle System의 초기 Particle 데이터를 생성하고 렌더링용 Billboard 목록을 구성하는 함수
     void Initialize();
 
-    // CPU Particle System의 Particle 데이터를 갱신하는 함수
+    // CPU Particle의 수명 및 위치를 갱신하고 렌더링용 Billboard 목록을 재구성하는 함수
     void Update(float deltaTime);
 
     // 렌더링에 사용할 Billboard 목록을 반환하는 함수
