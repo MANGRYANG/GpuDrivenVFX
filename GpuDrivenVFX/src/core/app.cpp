@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "app.h"
 
+#include <cstdio>
+
 namespace
 {
     // 변환 버퍼 데이터 구조체
@@ -278,8 +280,15 @@ void App::Update()
     // 현재 프레임의 deltaTime 갱신
     m_frameTimer.Tick();
 
+    // 현재 프레임에서 사용할 deltaTime 값 조회
+    const float deltaTime = m_frameTimer.GetDeltaTime();
+
     // 실제 deltaTime 값으로 CPU Particle System 업데이트
-    m_cpuParticleSystem.Update(m_frameTimer.GetDeltaTime());
+    m_cpuParticleSystem.Update(deltaTime);
+
+    // 현재 프레임의 Particle 상태 디버그 메시지 출력
+    PrintParticleDebugInfo(deltaTime);
+    
 }
 
 void App::Render()
@@ -292,4 +301,32 @@ void App::Render()
 
     // 최종 화면 출력
     m_renderer.EndFrame();
+}
+
+void App::PrintParticleDebugInfo(float deltaTime)
+{
+    // Particle 상태 디버그 출력 누적 시간 갱신
+    m_particleDebugPrintAccumulator += deltaTime;
+
+    // 1초마다 Particle 상태를 Output 창에 출력
+    if (m_particleDebugPrintAccumulator >= 1.0f)
+    {
+        // 다음 출력 주기를 위해 누적 시간 감소
+        m_particleDebugPrintAccumulator -= 1.0f;
+
+        // Particle 상태 출력 문자열 구성
+        wchar_t debugText[128] = {};
+        swprintf_s
+        (
+            debugText,
+            128,
+            L"[Particle] render=%zu / max=%zu, dropped=%zu\n",
+            m_cpuParticleSystem.GetRenderParticleCount(),
+            m_cpuParticleSystem.GetMaxParticleCount(),
+            m_cpuParticleSystem.GetDroppedSpawnCount()
+        );
+
+        // Output 창에 Particle 상태 출력
+        OutputDebugStringW(debugText);
+    }
 }

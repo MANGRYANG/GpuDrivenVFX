@@ -73,4 +73,11 @@ private:
 
     // 애플리케이션 종료 조건 제어용 변수
     bool m_running = true;
+
+private:
+    // Particle 상태 디버그 메시지 출력 주기를 제어하기 위한 누적 시간
+    float m_particleDebugPrintAccumulator = 0.0f;
+
+    // 현재 프레임의 Particle 상태 디버그 메시지를 출력하기 위한 함수
+    void PrintParticleDebugInfo(float deltaTime);
 };
