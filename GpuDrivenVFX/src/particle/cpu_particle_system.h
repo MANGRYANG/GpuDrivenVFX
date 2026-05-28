@@ -4,7 +4,7 @@
 #include <cstddef>
 #include <vector>
 
-#include "rendering/billboard_renderer.h"
+#include "rendering/billboard.h"
 
 // CPU 기반 연산으로 시뮬레이션할 Particle 데이터 구조체
 struct Particle

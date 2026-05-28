@@ -42,6 +42,7 @@
     <ClInclude Include="src\graphics\camera.h" />
     <ClInclude Include="src\graphics\mesh.h" />
     <ClInclude Include="src\pch.h" />
+    <ClInclude Include="src\rendering\billboard.h" />
     <ClInclude Include="src\rendering\renderer.h" />
     <ClInclude Include="src\rendering\shader.h" />
     <ClInclude Include="src\platform\window.h" />

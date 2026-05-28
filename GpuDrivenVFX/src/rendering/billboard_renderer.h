@@ -4,19 +4,9 @@
 #include <vector>
 
 #include "rendering/shader.h"
+#include "rendering/billboard.h"
 
 #include "graphics/camera.h"
-
-// Billboard Quad 정보 구조체
-struct Billboard
-{
-    // Billboard Quad의 월드 공간 위치
-    DirectX::XMFLOAT3 position;
-    // Billboard Quad의 크기
-    float size;
-    // Billboard Quad의 색상
-    DirectX::XMFLOAT4 color;
-};
 
 class BillboardRenderer
 {
@@ -29,7 +19,7 @@ public:
     // Billboard 렌더링에 필요한 GPU 리소스를 초기화하는 함수
     bool Initialize(ID3D11Device* device);
 
-    // 단일 Billboard Quad를 렌더링하는 함수
+    // Billboard Quad를 렌더링하는 함수
     void Render(ID3D11DeviceContext* context, const Camera& camera, const std::vector<Billboard>& billboards);
 
 private:

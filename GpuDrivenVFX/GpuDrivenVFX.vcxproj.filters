@@ -24,6 +24,7 @@
     <ClInclude Include="src\rendering\billboard_renderer.h" />
     <ClInclude Include="src\particle\cpu_particle_system.h" />
     <ClInclude Include="src\core\frame_timer.h" />
+    <ClInclude Include="src\rendering\billboard.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="shaders\VertexShader.hlsl" />
