@@ -9,7 +9,7 @@
 
 #include "rendering/renderer.h"
 #include "rendering/shader.h"
-#include "rendering/billboard_renderer.h"
+#include "rendering/cpu_billboard_renderer.h"
 
 #include "graphics/mesh.h"
 #include "graphics/camera.h"
@@ -56,8 +56,8 @@ private:
     Camera m_camera;
     // 인덱스 버퍼 기반 사각형 렌더링을 검증하기 위한 임시 Quad 메쉬
     Mesh m_quadMesh;
-    // Billboard Quad 렌더링을 검증하기 위한 렌더러
-    BillboardRenderer m_billboardRenderer;
+    // CPU 기반 Particle을 렌더링하기 위한 Billboard 렌더러
+    CpuBillboardRenderer m_cpuBillboardRenderer;
     // CPU 기반 Particle 데이터를 관리하는 시스템
     CpuParticleSystem m_cpuParticleSystem;
 

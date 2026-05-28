@@ -120,7 +120,7 @@ bool App::Initialize(HINSTANCE hInstance, int nCmdShow)
     m_cpuParticleSystem.Initialize();
 
     // Billboard Quad 렌더링에 필요한 리소스 초기화
-    if (!m_billboardRenderer.Initialize(m_renderer.GetDevice()))
+    if (!m_cpuBillboardRenderer.Initialize(m_renderer.GetDevice()))
     {
         // 초기화하지 못한 경우 실패 처리
         return false;
@@ -297,7 +297,7 @@ void App::Render()
     m_renderer.BeginFrame(0.05f, 0.08f, 0.12f, 1.0f);
 
     // Billboard Quads 렌더링
-    m_billboardRenderer.Render(m_renderer.GetContext(), m_camera, m_cpuParticleSystem.GetBillboards());
+    m_cpuBillboardRenderer.Render(m_renderer.GetContext(), m_camera, m_cpuParticleSystem.GetBillboards());
 
     // 최종 화면 출력
     m_renderer.EndFrame();

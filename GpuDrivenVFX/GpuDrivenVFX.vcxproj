@@ -30,6 +30,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="src\rendering\cpu_billboard_renderer.cpp" />
     <ClCompile Include="src\rendering\renderer.cpp" />
     <ClCompile Include="src\rendering\shader.cpp" />
     <ClCompile Include="src\platform\window.cpp" />
@@ -43,6 +44,7 @@
     <ClInclude Include="src\graphics\mesh.h" />
     <ClInclude Include="src\pch.h" />
     <ClInclude Include="src\rendering\billboard.h" />
+    <ClInclude Include="src\rendering\cpu_billboard_renderer.h" />
     <ClInclude Include="src\rendering\renderer.h" />
     <ClInclude Include="src\rendering\shader.h" />
     <ClInclude Include="src\platform\window.h" />
@@ -57,6 +59,14 @@
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">PS_Main</EntryPointName>
     </FxCompile>
     <FxCompile Include="shaders\BillboardVertexShader.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">VS_Main</EntryPointName>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">VS_Main</EntryPointName>
+    </FxCompile>
+    <FxCompile Include="shaders\CpuBillboardVertexShader.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
