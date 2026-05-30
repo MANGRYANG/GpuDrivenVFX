@@ -15,6 +15,7 @@
 #include "graphics/camera.h"
 
 #include "particle/cpu_particle_system.h"
+#include "particle/gpu_particle_system.h"
 
 class App
 {
@@ -56,10 +57,14 @@ private:
     Camera m_camera;
     // 인덱스 버퍼 기반 사각형 렌더링을 검증하기 위한 임시 Quad 메쉬
     Mesh m_quadMesh;
-    // CPU 기반 Particle을 렌더링하기 위한 Billboard 렌더러
-    CpuBillboardRenderer m_cpuBillboardRenderer;
+
     // CPU 기반 Particle 데이터를 관리하는 시스템
     CpuParticleSystem m_cpuParticleSystem;
+    // GPU 기반 Particle 데이터를 관리하는 시스템
+    GpuParticleSystem m_gpuParticleSystem;
+
+    // CPU 기반 Particle을 렌더링하기 위한 Billboard 렌더러
+    CpuBillboardRenderer m_cpuBillboardRenderer;
 
     // 월드 좌표계에서의 Quad 위치 정보
     DirectX::XMFLOAT3 m_quadPosition = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);

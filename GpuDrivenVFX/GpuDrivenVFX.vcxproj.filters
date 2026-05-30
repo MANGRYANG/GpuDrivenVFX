@@ -13,6 +13,7 @@
     <ClCompile Include="src\particle\cpu_particle_system.cpp" />
     <ClCompile Include="src\core\frame_timer.cpp" />
     <ClCompile Include="src\rendering\cpu_billboard_renderer.cpp" />
+    <ClCompile Include="src\particle\gpu_particle_system.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\pch.h" />
@@ -27,6 +28,7 @@
     <ClInclude Include="src\core\frame_timer.h" />
     <ClInclude Include="src\rendering\billboard.h" />
     <ClInclude Include="src\rendering\cpu_billboard_renderer.h" />
+    <ClInclude Include="src\particle\gpu_particle_system.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="shaders\VertexShader.hlsl" />

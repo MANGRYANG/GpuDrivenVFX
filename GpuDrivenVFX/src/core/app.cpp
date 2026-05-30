@@ -119,6 +119,9 @@ bool App::Initialize(HINSTANCE hInstance, int nCmdShow)
     // CPU Particle System 초기화
     m_cpuParticleSystem.Initialize();
 
+    // GPU Particle System 초기화
+    m_cpuParticleSystem.Initialize();
+
     // Billboard Quad 렌더링에 필요한 리소스 초기화
     if (!m_cpuBillboardRenderer.Initialize(m_renderer.GetDevice()))
     {
