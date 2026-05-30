@@ -120,7 +120,11 @@ bool App::Initialize(HINSTANCE hInstance, int nCmdShow)
     m_cpuParticleSystem.Initialize();
 
     // GPU Particle System 초기화
-    m_cpuParticleSystem.Initialize();
+    if (!m_gpuParticleSystem.Initialize(m_renderer.GetDevice()))
+    {
+        // 초기화하지 못한 경우 실패 처리
+        return false;
+    }
 
     // Billboard Quad 렌더링에 필요한 리소스 초기화
     if (!m_cpuBillboardRenderer.Initialize(m_renderer.GetDevice()))
@@ -288,6 +292,9 @@ void App::Update()
 
     // 실제 deltaTime 값으로 CPU Particle System 업데이트
     m_cpuParticleSystem.Update(deltaTime);
+
+    // GPU Compute Shader를 사용해 GPU Particle System 업데이트
+    m_gpuParticleSystem.Update(m_renderer.GetContext(), deltaTime);
 
     // 현재 프레임의 Particle 상태 디버그 메시지 출력
     PrintParticleDebugInfo(deltaTime);

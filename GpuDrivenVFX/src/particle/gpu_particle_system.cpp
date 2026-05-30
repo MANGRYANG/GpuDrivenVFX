@@ -1,6 +1,22 @@
 #include "pch.h"
 #include "gpu_particle_system.h"
 
+#include "rendering/shader.h"
+
+namespace
+{
+    // GPU Particle 업데이트 상수 버퍼 데이터 구조체
+    struct ParticleUpdateBufferData
+    {
+        float deltaTime;
+        std::uint32_t particleCount;
+        DirectX::XMFLOAT2 padding;
+    };
+
+    // GPU Particle 업데이트 상수 버퍼는 16바이트 정렬을 만족해야 함
+    static_assert(sizeof(ParticleUpdateBufferData) == 16, "ParticleUpdateBufferData size must be 16 bytes.");
+}
+
 bool GpuParticleSystem::Initialize(ID3D11Device* device)
 {
     // 디바이스가 누락된 경우
@@ -19,7 +35,89 @@ bool GpuParticleSystem::Initialize(ID3D11Device* device)
         return false;
     }
 
+    // GPU Particle 업데이트용 Compute Shader 생성
+    if (!CreateComputeShader(device))
+    {
+        // 생성하지 못한 경우 실패 처리
+        return false;
+    }
+
+    // GPU Particle 업데이트 Constant Buffer 생성
+    if (!CreateParticleUpdateBuffer(device))
+    {
+        // 생성하지 못한 경우 실패 처리
+        return false;
+    }
+
     return true;
+}
+
+void GpuParticleSystem::Update(ID3D11DeviceContext* context, float deltaTime)
+{
+    // 디바이스 컨텍스트가 누락된 경우
+    if (!context)
+    {
+        return;
+    }
+
+    // 업데이트에 필요한 리소스가 누락된 경우
+    if (!m_computeShader.Get() || !m_particleUav.Get() || !m_particleUpdateBuffer.Get())
+    {
+        return;
+    }
+
+    // GPU Particle 업데이트 상수 버퍼 갱신
+    UpdateParticleUpdateBuffer(context, deltaTime);
+
+    // Compute Shader 바인딩
+    context->CSSetShader(m_computeShader.Get(), nullptr, 0);
+
+    // Particle UAV를 Compute Shader에 바인딩
+    ID3D11UnorderedAccessView* unorderedAccessViews[] =
+    {
+        m_particleUav.Get()
+    };
+
+    context->CSSetUnorderedAccessViews
+    (
+        0,
+        1,
+        unorderedAccessViews,
+        nullptr
+    );
+
+    // 64개 thread를 하나의 group으로 사용
+    static constexpr UINT ThreadGroupSize = 64;
+
+    // 전체 Particle 개수를 처리할 thread group 수 계산
+    const UINT threadGroupCount = static_cast<UINT>((MaxParticleCount + ThreadGroupSize - 1) / ThreadGroupSize);
+
+    // GPU Compute Shader Dispatch
+    context->Dispatch(threadGroupCount, 1, 1);
+
+    // 이후 렌더링 단계에서 동일 버퍼를 SRV로 사용할 수 있도록 UAV 바인딩 해제
+    ID3D11UnorderedAccessView* nullUnorderedAccessViews[] = { nullptr };
+
+    context->CSSetUnorderedAccessViews
+    (
+        0,
+        1,
+        nullUnorderedAccessViews,
+        nullptr
+    );
+
+    // Compute Shader 상수 버퍼 바인딩 해제
+    ID3D11Buffer* nullConstantBuffers[] = { nullptr };
+
+    context->CSSetConstantBuffers
+    (
+        0,
+        1,
+        nullConstantBuffers
+    );
+
+    // Compute Shader 바인딩 해제
+    context->CSSetShader(nullptr, nullptr, 0);
 }
 
 ID3D11ShaderResourceView* GpuParticleSystem::GetParticleSrv() const
@@ -144,4 +242,129 @@ bool GpuParticleSystem::CreateParticleBuffer(ID3D11Device* device)
     }
 
     return true;
+}
+
+bool GpuParticleSystem::CreateComputeShader(ID3D11Device* device)
+{
+    // 디바이스가 누락된 경우
+    if (!device)
+    {
+        return false;
+    }
+
+    // Compute Shader 컴파일 결과 Blob
+    Microsoft::WRL::ComPtr<ID3DBlob> computeShaderBlob;
+
+    // GPU Particle 업데이트 Compute Shader 컴파일
+    if (!Shader::CompileShaderFromFile
+    (
+        L"shaders/GpuParticleUpdateComputeShader.hlsl",
+        "CS_Main",
+        "cs_5_0",
+        computeShaderBlob
+    ))
+    {
+        // 컴파일하지 못한 경우 실패 처리
+        return false;
+    }
+
+    // Compute Shader 객체 생성
+    HRESULT hr = device->CreateComputeShader
+    (
+        computeShaderBlob->GetBufferPointer(),
+        computeShaderBlob->GetBufferSize(),
+        nullptr,
+        m_computeShader.GetAddressOf()
+    );
+
+    // Compute Shader 생성에 실패한 경우
+    if (FAILED(hr))
+    {
+        MessageBoxW(nullptr, L"Failed to create compute shader for GPU particle update.", L"GpuParticleSystem Error", MB_OK | MB_ICONERROR);
+
+        return false;
+    }
+
+    return true;
+}
+
+bool GpuParticleSystem::CreateParticleUpdateBuffer(ID3D11Device* device)
+{
+    // 디바이스가 누락된 경우
+    if (!device)
+    {
+        return false;
+    }
+
+    // GPU Particle 업데이트 상수 버퍼 설명자 구조체
+    D3D11_BUFFER_DESC bufferDesc = {};
+    // 버퍼를 구성할 데이터 구조체의 메모리 크기 설정
+    bufferDesc.ByteWidth = sizeof(ParticleUpdateBufferData);
+    // CPU에서 매 프레임 UpdateSubresource로 갱신할 기본 버퍼로 설정
+    bufferDesc.Usage = D3D11_USAGE_DEFAULT;
+    // 상수 버퍼로 바인딩
+    bufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    // CPU 직접 접근은 사용하지 않음
+    bufferDesc.CPUAccessFlags = 0;
+    // 기타 특수 기능 사용하지 않음
+    bufferDesc.MiscFlags = 0;
+    // Structured Buffer가 아니므로 기본값으로 설정
+    bufferDesc.StructureByteStride = 0;
+
+    // GPU Particle 업데이트 상수 버퍼 생성
+    HRESULT hr = device->CreateBuffer
+    (
+        &bufferDesc,
+        nullptr,
+        m_particleUpdateBuffer.GetAddressOf()
+    );
+
+    // 상수 버퍼 생성에 실패한 경우
+    if (FAILED(hr))
+    {
+        MessageBoxW(nullptr, L"Failed to create GPU particle update buffer.", L"GpuParticleSystem Error", MB_OK | MB_ICONERROR);
+
+        return false;
+    }
+
+    return true;
+}
+
+void GpuParticleSystem::UpdateParticleUpdateBuffer(ID3D11DeviceContext* context, float deltaTime)
+{
+    // 디바이스 컨텍스트나 상수 버퍼가 누락된 경우
+    if (!context || !m_particleUpdateBuffer.Get())
+    {
+        return;
+    }
+
+    // GPU Particle 업데이트 상수 버퍼 데이터 구성
+    ParticleUpdateBufferData bufferData = {};
+    bufferData.deltaTime = deltaTime;
+    bufferData.particleCount = static_cast<std::uint32_t>(MaxParticleCount);
+    bufferData.padding = DirectX::XMFLOAT2(0.0f, 0.0f);
+
+    // CPU 메모리의 상수 버퍼 데이터를 GPU 상수 버퍼에 업데이트
+    context->UpdateSubresource
+    (
+        m_particleUpdateBuffer.Get(),
+        0,
+        nullptr,
+        &bufferData,
+        0,
+        0
+    );
+
+    // Compute Shader 단계에 상수 버퍼 바인딩
+    ID3D11Buffer* constantBuffers[] =
+    {
+        m_particleUpdateBuffer.Get()
+    };
+
+    context->CSSetConstantBuffers
+    (
+        0,
+        1,
+        constantBuffers
+    );
 }

@@ -25,9 +25,8 @@ public:
         return m_vertexShaderBlob.Get();
     }
 
-private:
     // 셰이더 파일 경로를 받아 HLSL 셰이더 코드를 바이너리로 컴파일하는 함수
-    bool CompileShaderFromFile
+    static bool CompileShaderFromFile
     (
         const std::wstring& filePath,
         const char* entryPoint,

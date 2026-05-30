@@ -36,5 +36,6 @@
     <FxCompile Include="shaders\BillboardVertexShader.hlsl" />
     <FxCompile Include="shaders\BillboardPixelShader.hlsl" />
     <FxCompile Include="shaders\CpuBillboardVertexShader.hlsl" />
+    <FxCompile Include="shaders\GpuParticleUpdateComputeShader.hlsl" />
   </ItemGroup>
 </Project>

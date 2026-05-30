@@ -2,7 +2,9 @@
 
 #include <DirectXMath.h>
 #include <cstddef>
-#include <vector>
+#include <cstdint>
+#include <d3d11.h>
+#include <wrl/client.h>
 
 // GPU 기반 Particle 시뮬레이션에서 사용할 Particle 데이터 구조체
 struct GpuParticleData
@@ -42,6 +44,9 @@ public:
     // GPU Particle System에 필요한 GPU 리소스를 초기화하는 함수
     bool Initialize(ID3D11Device* device);
 
+    // GPU Compute Shader를 사용해 Particle 데이터를 갱신하는 함수
+    void Update(ID3D11DeviceContext* context, float deltaTime);
+
     // GPU Particle 데이터를 읽기 위한 SRV를 반환하는 함수
     ID3D11ShaderResourceView* GetParticleSrv() const;
 
@@ -55,14 +60,29 @@ private:
     // GPU Particle Structured Buffer를 생성하는 함수
     bool CreateParticleBuffer(ID3D11Device* device);
 
+    // GPU Particle 업데이트용 Compute Shader를 생성하는 함수
+    bool CreateComputeShader(ID3D11Device* device);
+
+    // GPU Particle 업데이트에 사용할 상수 버퍼를 생성하는 함수
+    bool CreateParticleUpdateBuffer(ID3D11Device* device);
+
+    // GPU Particle 업데이트 상수 버퍼를 갱신하는 함수
+    void UpdateParticleUpdateBuffer(ID3D11DeviceContext* context, float deltaTime);
+
 private:
     // 현재 테스트 단계에서 사용할 GPU Particle 최대 개수
     static constexpr std::size_t MaxParticleCount = 64;
 
     // GPU Particle 데이터를 저장할 Structured Buffer
     Microsoft::WRL::ComPtr<ID3D11Buffer> m_particleBuffer;
+    // GPU Particle 업데이트에 사용할 Constant Buffer
+    Microsoft::WRL::ComPtr<ID3D11Buffer> m_particleUpdateBuffer;
+
     // Vertex Shader 또는 Compute Shader에서 Particle 데이터를 읽기 위한 SRV
     Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_particleSrv;
     // Compute Shader에서 Particle 데이터를 쓰기 위한 UAV
     Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> m_particleUav;
+
+    // GPU Particle 업데이트를 수행할 Compute Shader
+    Microsoft::WRL::ComPtr<ID3D11ComputeShader> m_computeShader;
 };
