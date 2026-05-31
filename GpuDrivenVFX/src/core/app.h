@@ -10,6 +10,7 @@
 #include "rendering/renderer.h"
 #include "rendering/shader.h"
 #include "rendering/cpu_billboard_renderer.h"
+#include "rendering/gpu_billboard_renderer.h"
 
 #include "graphics/mesh.h"
 #include "graphics/camera.h"
@@ -65,6 +66,8 @@ private:
 
     // CPU 기반 Particle을 렌더링하기 위한 Billboard 렌더러
     CpuBillboardRenderer m_cpuBillboardRenderer;
+    // GPU 기반 Particle을 렌더링하기 위한 Billboard 렌더러
+    GpuBillboardRenderer m_gpuBillboardRenderer;
 
     // 월드 좌표계에서의 Quad 위치 정보
     DirectX::XMFLOAT3 m_quadPosition = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);

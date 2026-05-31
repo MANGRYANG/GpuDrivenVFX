@@ -14,6 +14,7 @@
     <ClCompile Include="src\core\frame_timer.cpp" />
     <ClCompile Include="src\rendering\cpu_billboard_renderer.cpp" />
     <ClCompile Include="src\particle\gpu_particle_system.cpp" />
+    <ClCompile Include="src\rendering\gpu_billboard_renderer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\pch.h" />
@@ -29,6 +30,7 @@
     <ClInclude Include="src\rendering\billboard.h" />
     <ClInclude Include="src\rendering\cpu_billboard_renderer.h" />
     <ClInclude Include="src\particle\gpu_particle_system.h" />
+    <ClInclude Include="src\rendering\gpu_billboard_renderer.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="shaders\VertexShader.hlsl" />
@@ -37,5 +39,6 @@
     <FxCompile Include="shaders\BillboardPixelShader.hlsl" />
     <FxCompile Include="shaders\CpuBillboardVertexShader.hlsl" />
     <FxCompile Include="shaders\GpuParticleUpdateComputeShader.hlsl" />
+    <FxCompile Include="shaders\GpuBillboardVertexShader.hlsl" />
   </ItemGroup>
 </Project>

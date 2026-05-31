@@ -40,7 +40,7 @@ VSOutput VS_Main(VSInput input)
     float4 positionView = centerView;
     positionView.xy += input.Corner.xy * input.InstanceSize;
 
-    // 뷰 공간 위치를 투영 좌표계로 변환
+    // 뷰 좌표계 위치를 투영 좌표계로 변환하여 Pixel Shader로 전달
     output.Pos = mul(positionView, projection);
 
     // 인스턴스 색상을 Pixel Shader로 전달

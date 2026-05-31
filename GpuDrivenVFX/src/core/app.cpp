@@ -126,8 +126,15 @@ bool App::Initialize(HINSTANCE hInstance, int nCmdShow)
         return false;
     }
 
-    // Billboard Quad 렌더링에 필요한 리소스 초기화
+    // CPU 파티클 시스템에서 Billboard 렌더링에 필요한 리소스 초기화
     if (!m_cpuBillboardRenderer.Initialize(m_renderer.GetDevice()))
+    {
+        // 초기화하지 못한 경우 실패 처리
+        return false;
+    }
+
+    // GPU 파티클 시스템에서 Billboard 렌더링에 필요한 리소스 초기화
+    if (!m_gpuBillboardRenderer.Initialize(m_renderer.GetDevice()))
     {
         // 초기화하지 못한 경우 실패 처리
         return false;
@@ -306,8 +313,22 @@ void App::Render()
     // 프레임 드로우 준비 및 배경 색 초기화 (#0D141F)
     m_renderer.BeginFrame(0.05f, 0.08f, 0.12f, 1.0f);
 
-    // Billboard Quads 렌더링
-    m_cpuBillboardRenderer.Render(m_renderer.GetContext(), m_camera, m_cpuParticleSystem.GetBillboards());
+    // CPU Particle Billboard Quads 렌더링
+    m_cpuBillboardRenderer.Render
+    (
+        m_renderer.GetContext(),
+        m_camera,
+        m_cpuParticleSystem.GetBillboards()
+    );
+
+    // GPU Particle Buffer를 Billboard Quads로 렌더링
+    m_gpuBillboardRenderer.Render
+    (
+        m_renderer.GetContext(),
+        m_camera,
+        m_gpuParticleSystem.GetParticleSrv(),
+        m_gpuParticleSystem.GetMaxParticleCount()
+    );
 
     // 최종 화면 출력
     m_renderer.EndFrame();
