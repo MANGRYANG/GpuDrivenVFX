@@ -8,13 +8,22 @@ namespace
     // GPU Particle 업데이트 상수 버퍼 데이터 구조체
     struct ParticleUpdateBufferData
     {
+        DirectX::XMFLOAT3 emitterPosition;
+        float particleSize;
+
+        DirectX::XMFLOAT3 emitterVelocity;
+        float particleLifetime;
+
+        DirectX::XMFLOAT4 emitterColor;
+
         float deltaTime;
         std::uint32_t particleCount;
-        DirectX::XMFLOAT2 padding;
+        std::uint32_t spawnStartIndex;
+        std::uint32_t spawnCount;
     };
 
     // GPU Particle 업데이트 상수 버퍼는 16바이트 정렬을 만족해야 함
-    static_assert(sizeof(ParticleUpdateBufferData) == 16, "ParticleUpdateBufferData size must be 16 bytes.");
+    static_assert(sizeof(ParticleUpdateBufferData) % 16 == 0, "Constant buffer size must be 16-byte aligned.");
 }
 
 bool GpuParticleSystem::Initialize(ID3D11Device* device)
@@ -66,8 +75,20 @@ void GpuParticleSystem::Update(ID3D11DeviceContext* context, float deltaTime)
         return;
     }
 
+    // 이번 프레임에 생성할 GPU Particle 개수 계산
+    const std::uint32_t spawnCount = ConsumeSpawnCount(deltaTime);
+
+    // 이번 프레임의 GPU Particle 생성 시작 슬롯 인덱스 기록
+    const std::uint32_t spawnStartIndex = m_emitter.spawnIndex;
+
+    // 다음 프레임의 GPU Particle 생성 시작 슬롯 인덱스 갱신
+    if (spawnCount > 0)
+    {
+        m_emitter.spawnIndex = static_cast<std::uint32_t>((m_emitter.spawnIndex + spawnCount) % MaxParticleCount);
+    }
+
     // GPU Particle 업데이트 상수 버퍼 갱신
-    UpdateParticleUpdateBuffer(context, deltaTime);
+    UpdateParticleUpdateBuffer(context, deltaTime, spawnStartIndex, spawnCount);
 
     // Compute Shader 바인딩
     context->CSSetShader(m_computeShader.Get(), nullptr, 0);
@@ -330,7 +351,13 @@ bool GpuParticleSystem::CreateParticleUpdateBuffer(ID3D11Device* device)
     return true;
 }
 
-void GpuParticleSystem::UpdateParticleUpdateBuffer(ID3D11DeviceContext* context, float deltaTime)
+void GpuParticleSystem::UpdateParticleUpdateBuffer
+(
+    ID3D11DeviceContext* context,
+    float deltaTime,
+    std::uint32_t spawnStartIndex,
+    std::uint32_t spawnCount
+)
 {
     // 디바이스 컨텍스트나 상수 버퍼가 누락된 경우
     if (!context || !m_particleUpdateBuffer.Get())
@@ -340,9 +367,15 @@ void GpuParticleSystem::UpdateParticleUpdateBuffer(ID3D11DeviceContext* context,
 
     // GPU Particle 업데이트 상수 버퍼 데이터 구성
     ParticleUpdateBufferData bufferData = {};
+    bufferData.emitterPosition = m_emitter.position;
+    bufferData.particleSize = m_emitter.particleSize;
+    bufferData.emitterVelocity = m_emitter.velocity;
+    bufferData.particleLifetime = m_emitter.particleLifetime;
+    bufferData.emitterColor = m_emitter.color;
     bufferData.deltaTime = deltaTime;
     bufferData.particleCount = static_cast<std::uint32_t>(MaxParticleCount);
-    bufferData.padding = DirectX::XMFLOAT2(0.0f, 0.0f);
+    bufferData.spawnStartIndex = spawnStartIndex;
+    bufferData.spawnCount = spawnCount;
 
     // CPU 메모리의 상수 버퍼 데이터를 GPU 상수 버퍼에 업데이트
     context->UpdateSubresource
@@ -367,4 +400,30 @@ void GpuParticleSystem::UpdateParticleUpdateBuffer(ID3D11DeviceContext* context,
         1,
         constantBuffers
     );
+}
+
+std::uint32_t GpuParticleSystem::ConsumeSpawnCount(float deltaTime)
+{
+    // 생성 요청 수 누적
+    m_emitter.spawnAccumulator += m_emitter.spawnRate * deltaTime;
+
+    // 이번 프레임에 생성할 수 있는 Particle 개수 계산
+    const std::uint32_t spawnCount = static_cast<std::uint32_t>(m_emitter.spawnAccumulator);
+
+    // 생성할 Particle이 없는 경우
+    if (spawnCount == 0)
+    {
+        return 0;
+    }
+
+    // 처리한 생성 요청 수만큼 누적값 감소
+    m_emitter.spawnAccumulator -= static_cast<float>(spawnCount);
+
+    // 한 프레임에서 최대 Particle 수를 초과해 생성하지 않도록 제한
+    if (spawnCount > MaxParticleCount)
+    {
+        return static_cast<std::uint32_t>(MaxParticleCount);
+    }
+
+    return spawnCount;
 }

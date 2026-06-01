@@ -67,9 +67,39 @@ private:
     bool CreateParticleUpdateBuffer(ID3D11Device* device);
 
     // GPU Particle 업데이트 상수 버퍼를 갱신하는 함수
-    void UpdateParticleUpdateBuffer(ID3D11DeviceContext* context, float deltaTime);
+    void UpdateParticleUpdateBuffer
+    (
+        ID3D11DeviceContext* context,
+        float deltaTime,
+        std::uint32_t spawnStartIndex,
+        std::uint32_t spawnCount
+    );
+
+    // 이번 프레임에 생성할 GPU Particle 개수를 계산하는 함수
+    std::uint32_t ConsumeSpawnCount(float deltaTime);
 
 private:
+    // GPU Particle을 지속적으로 생성하기 위한 Emitter 설정 구조체
+    struct ParticleEmitter
+    {
+        // GPU Particle이 생성될 월드 공간 위치
+        DirectX::XMFLOAT3 position = DirectX::XMFLOAT3(0.45f, -0.5f, 0.0f);
+        // GPU Particle의 초기 이동 속도
+        DirectX::XMFLOAT3 velocity = DirectX::XMFLOAT3(0.0f, 0.35f, 0.0f);
+        // GPU Particle을 Billboard로 렌더링할 때 사용할 크기
+        float particleSize = 0.01f;
+        // GPU Particle의 총 생존 시간
+        float particleLifetime = 3.0f;
+        // 초당 생성해야 하는 GPU Particle 개수
+        float spawnRate = 8.0f;
+        // 프레임마다 누적되는 생성 요청 수
+        float spawnAccumulator = 0.0f;
+        // 다음 프레임에 GPU Particle을 생성할 순환 슬롯 인덱스
+        std::uint32_t spawnIndex = 0;
+        // GPU Particle을 Billboard로 렌더링할 때 사용할 색상
+        DirectX::XMFLOAT4 color = DirectX::XMFLOAT4(0.5f, 0.5f, 1.0f, 1.0f);
+    };
+
     // 현재 테스트 단계에서 사용할 GPU Particle 최대 개수
     static constexpr std::size_t MaxParticleCount = 64;
 
@@ -85,4 +115,7 @@ private:
 
     // GPU Particle 업데이트를 수행할 Compute Shader
     Microsoft::WRL::ComPtr<ID3D11ComputeShader> m_computeShader;
+
+    // GPU Particle Emitter
+    ParticleEmitter m_emitter;
 };
