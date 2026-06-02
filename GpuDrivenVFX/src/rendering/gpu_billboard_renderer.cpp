@@ -292,6 +292,8 @@ void GpuBillboardRenderer::Render
     ID3D11DeviceContext* context,
     const Camera& camera,
     ID3D11ShaderResourceView* particleSrv,
+    ID3D11ShaderResourceView* aliveIndexSrv,
+    ID3D11ShaderResourceView* aliveCountSrv,
     std::size_t particleCount
 )
 {
@@ -301,8 +303,8 @@ void GpuBillboardRenderer::Render
         return;
     }
 
-    // 렌더링에 필요한 Particle SRV가 누락된 경우
-    if (!particleSrv)
+    // 렌더링에 필요한 SRV가 누락된 경우
+    if (!particleSrv || !aliveIndexSrv || !aliveCountSrv)
     {
         return;
     }
@@ -319,16 +321,18 @@ void GpuBillboardRenderer::Render
     // 현재 프레임에서 사용할 카메라 변환 행렬을 정점 셰이더에 전달
     UpdateCameraBuffer(context, camera);
 
-    // GPU Particle Buffer SRV를 정점 셰이더에 바인딩
+    // GPU Particle Buffer, alive index list, alive count를 정점 셰이더에 바인딩
     ID3D11ShaderResourceView* shaderResourceViews[] =
     {
-        particleSrv
+        particleSrv,
+        aliveIndexSrv,
+        aliveCountSrv
     };
 
     context->VSSetShaderResources
     (
         0,
-        1,
+        3,
         shaderResourceViews
     );
 
@@ -375,12 +379,17 @@ void GpuBillboardRenderer::Render
     );
 
     // 다음 Compute Shader 업데이트에서 동일 버퍼를 UAV로 사용할 수 있도록 SRV 바인딩 해제
-    ID3D11ShaderResourceView* nullShaderResourceViews[] = { nullptr };
+    ID3D11ShaderResourceView* nullShaderResourceViews[] =
+    {
+        nullptr,
+        nullptr,
+        nullptr
+    };
 
     context->VSSetShaderResources
     (
         0,
-        1,
+        3,
         nullShaderResourceViews
     );
 }

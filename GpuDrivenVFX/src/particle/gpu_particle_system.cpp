@@ -44,6 +44,20 @@ bool GpuParticleSystem::Initialize(ID3D11Device* device)
         return false;
     }
 
+    // GPU active Particle 인덱스 목록 버퍼 생성
+    if (!CreateAliveIndexBuffer(device))
+    {
+        // 생성하지 못한 경우 실패 처리
+        return false;
+    }
+
+    // GPU active Particle 개수 버퍼 생성
+    if (!CreateAliveCountBuffer(device))
+    {
+        // 생성하지 못한 경우 실패 처리
+        return false;
+    }
+
     // GPU Particle 업데이트용 Compute Shader 생성
     if (!CreateComputeShader(device))
     {
@@ -70,7 +84,12 @@ void GpuParticleSystem::Update(ID3D11DeviceContext* context, float deltaTime)
     }
 
     // 업데이트에 필요한 리소스가 누락된 경우
-    if (!m_computeShader.Get() || !m_particleUav.Get() || !m_particleUpdateBuffer.Get())
+    if (!m_computeShader.Get() ||
+        !m_particleUav.Get() ||
+        !m_aliveIndexUav.Get() ||
+        !m_aliveCountUav.Get() ||
+        !m_particleUpdateBuffer.Get()
+    )
     {
         return;
     }
@@ -90,19 +109,30 @@ void GpuParticleSystem::Update(ID3D11DeviceContext* context, float deltaTime)
     // GPU Particle 업데이트 상수 버퍼 갱신
     UpdateParticleUpdateBuffer(context, deltaTime, spawnStartIndex, spawnCount);
 
+    // 이번 프레임 active Particle 개수를 0으로 초기화
+    const UINT clearValues[4] = { 0, 0, 0, 0 };
+
+    context->ClearUnorderedAccessViewUint
+    (
+        m_aliveCountUav.Get(),
+        clearValues
+    );
+
     // Compute Shader 바인딩
     context->CSSetShader(m_computeShader.Get(), nullptr, 0);
 
     // Particle UAV를 Compute Shader에 바인딩
     ID3D11UnorderedAccessView* unorderedAccessViews[] =
     {
-        m_particleUav.Get()
+        m_particleUav.Get(),
+        m_aliveIndexUav.Get(),
+        m_aliveCountUav.Get()
     };
 
     context->CSSetUnorderedAccessViews
     (
         0,
-        1,
+        3,
         unorderedAccessViews,
         nullptr
     );
@@ -117,12 +147,17 @@ void GpuParticleSystem::Update(ID3D11DeviceContext* context, float deltaTime)
     context->Dispatch(threadGroupCount, 1, 1);
 
     // 이후 렌더링 단계에서 동일 버퍼를 SRV로 사용할 수 있도록 UAV 바인딩 해제
-    ID3D11UnorderedAccessView* nullUnorderedAccessViews[] = { nullptr };
+    ID3D11UnorderedAccessView* nullUnorderedAccessViews[] =
+    {
+        nullptr,
+        nullptr,
+        nullptr
+    };
 
     context->CSSetUnorderedAccessViews
     (
         0,
-        1,
+        3,
         nullUnorderedAccessViews,
         nullptr
     );
@@ -144,6 +179,16 @@ void GpuParticleSystem::Update(ID3D11DeviceContext* context, float deltaTime)
 ID3D11ShaderResourceView* GpuParticleSystem::GetParticleSrv() const
 {
     return m_particleSrv.Get();
+}
+
+ID3D11ShaderResourceView* GpuParticleSystem::GetAliveIndexSrv() const
+{
+    return m_aliveIndexSrv.Get();
+}
+
+ID3D11ShaderResourceView* GpuParticleSystem::GetAliveCountSrv() const
+{
+    return m_aliveCountSrv.Get();
 }
 
 ID3D11UnorderedAccessView* GpuParticleSystem::GetParticleUav() const
@@ -344,6 +389,187 @@ bool GpuParticleSystem::CreateParticleUpdateBuffer(ID3D11Device* device)
     if (FAILED(hr))
     {
         MessageBoxW(nullptr, L"Failed to create GPU particle update buffer.", L"GpuParticleSystem Error", MB_OK | MB_ICONERROR);
+
+        return false;
+    }
+
+    return true;
+}
+
+bool GpuParticleSystem::CreateAliveIndexBuffer(ID3D11Device* device)
+{
+    // 디바이스가 누락된 경우
+    if (!device)
+    {
+        return false;
+    }
+
+    // active Particle 인덱스 목록 초기 데이터
+    std::vector<std::uint32_t> initialAliveIndices;
+    initialAliveIndices.resize(MaxParticleCount);
+
+    // active Particle 인덱스 목록 Structured Buffer 설명자 구조체
+    D3D11_BUFFER_DESC bufferDesc = {};
+    bufferDesc.ByteWidth = static_cast<UINT>(sizeof(std::uint32_t) * MaxParticleCount);
+    bufferDesc.Usage = D3D11_USAGE_DEFAULT;
+    bufferDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
+    bufferDesc.CPUAccessFlags = 0;
+    bufferDesc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+    bufferDesc.StructureByteStride = sizeof(std::uint32_t);
+
+    // 버퍼 초기 데이터 설정
+    D3D11_SUBRESOURCE_DATA initialData = {};
+    initialData.pSysMem = initialAliveIndices.data();
+
+    // active Particle 인덱스 목록 Buffer 생성
+    HRESULT hr = device->CreateBuffer
+    (
+        &bufferDesc,
+        &initialData,
+        m_aliveIndexBuffer.GetAddressOf()
+    );
+
+    // 버퍼 생성에 실패한 경우
+    if (FAILED(hr))
+    {
+        MessageBoxW(nullptr, L"Failed to create GPU alive index buffer.", L"GpuParticleSystem Error", MB_OK | MB_ICONERROR);
+
+        return false;
+    }
+
+    // active Particle 인덱스 목록 SRV 설명자 구조체
+    D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+    srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+    srvDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+    srvDesc.Buffer.FirstElement = 0;
+    srvDesc.Buffer.NumElements = static_cast<UINT>(MaxParticleCount);
+
+    // active Particle 인덱스 목록 SRV 생성
+    hr = device->CreateShaderResourceView
+    (
+        m_aliveIndexBuffer.Get(),
+        &srvDesc,
+        m_aliveIndexSrv.GetAddressOf()
+    );
+
+    // SRV 생성에 실패한 경우
+    if (FAILED(hr))
+    {
+        MessageBoxW(nullptr, L"Failed to create GPU alive index SRV.", L"GpuParticleSystem Error", MB_OK | MB_ICONERROR);
+
+        return false;
+    }
+
+    // active Particle 인덱스 목록 UAV 설명자 구조체
+    D3D11_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+    uavDesc.Format = DXGI_FORMAT_UNKNOWN;
+    uavDesc.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
+    uavDesc.Buffer.FirstElement = 0;
+    uavDesc.Buffer.NumElements = static_cast<UINT>(MaxParticleCount);
+    uavDesc.Buffer.Flags = 0;
+
+    // active Particle 인덱스 목록 UAV 생성
+    hr = device->CreateUnorderedAccessView
+    (
+        m_aliveIndexBuffer.Get(),
+        &uavDesc,
+        m_aliveIndexUav.GetAddressOf()
+    );
+
+    // UAV 생성에 실패한 경우
+    if (FAILED(hr))
+    {
+        MessageBoxW(nullptr, L"Failed to create GPU alive index UAV.", L"GpuParticleSystem Error", MB_OK | MB_ICONERROR);
+
+        return false;
+    }
+
+    return true;
+}
+
+bool GpuParticleSystem::CreateAliveCountBuffer(ID3D11Device* device)
+{
+    // 디바이스가 누락된 경우
+    if (!device)
+    {
+        return false;
+    }
+
+    // active Particle 개수 초기값
+    const std::uint32_t initialAliveCount = 0;
+
+    // active Particle 개수 Structured Buffer 설명자 구조체
+    D3D11_BUFFER_DESC bufferDesc = {};
+    bufferDesc.ByteWidth = sizeof(std::uint32_t);
+    bufferDesc.Usage = D3D11_USAGE_DEFAULT;
+    bufferDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
+    bufferDesc.CPUAccessFlags = 0;
+    bufferDesc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+    bufferDesc.StructureByteStride = sizeof(std::uint32_t);
+
+    // 버퍼 초기 데이터 설정
+    D3D11_SUBRESOURCE_DATA initialData = {};
+    initialData.pSysMem = &initialAliveCount;
+
+    // active Particle 개수 Buffer 생성
+    HRESULT hr = device->CreateBuffer
+    (
+        &bufferDesc,
+        &initialData,
+        m_aliveCountBuffer.GetAddressOf()
+    );
+
+    // 버퍼 생성에 실패한 경우
+    if (FAILED(hr))
+    {
+        MessageBoxW(nullptr, L"Failed to create GPU alive count buffer.", L"GpuParticleSystem Error", MB_OK | MB_ICONERROR);
+
+        return false;
+    }
+
+    // active Particle 개수 SRV 설명자 구조체
+    D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+    srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+    srvDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+    srvDesc.Buffer.FirstElement = 0;
+    srvDesc.Buffer.NumElements = 1;
+
+    // active Particle 개수 SRV 생성
+    hr = device->CreateShaderResourceView
+    (
+        m_aliveCountBuffer.Get(),
+        &srvDesc,
+        m_aliveCountSrv.GetAddressOf()
+    );
+
+    // SRV 생성에 실패한 경우
+    if (FAILED(hr))
+    {
+        MessageBoxW(nullptr, L"Failed to create GPU alive count SRV.", L"GpuParticleSystem Error", MB_OK | MB_ICONERROR);
+
+        return false;
+    }
+
+    // active Particle 개수 UAV 설명자 구조체
+    D3D11_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+    uavDesc.Format = DXGI_FORMAT_UNKNOWN;
+    uavDesc.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
+    uavDesc.Buffer.FirstElement = 0;
+    uavDesc.Buffer.NumElements = 1;
+    uavDesc.Buffer.Flags = 0;
+
+    // active Particle 개수 UAV 생성
+    hr = device->CreateUnorderedAccessView
+    (
+        m_aliveCountBuffer.Get(),
+        &uavDesc,
+        m_aliveCountUav.GetAddressOf()
+    );
+
+    // UAV 생성에 실패한 경우
+    if (FAILED(hr))
+    {
+        MessageBoxW(nullptr, L"Failed to create GPU alive count UAV.", L"GpuParticleSystem Error", MB_OK | MB_ICONERROR);
 
         return false;
     }

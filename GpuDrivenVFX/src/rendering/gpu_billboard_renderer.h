@@ -24,6 +24,8 @@ public:
         ID3D11DeviceContext* context,
         const Camera& camera,
         ID3D11ShaderResourceView* particleSrv,
+        ID3D11ShaderResourceView* aliveIndexSrv,
+        ID3D11ShaderResourceView* aliveCountSrv,
         std::size_t particleCount
     );
 

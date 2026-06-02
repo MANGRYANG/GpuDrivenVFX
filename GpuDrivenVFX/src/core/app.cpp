@@ -327,6 +327,8 @@ void App::Render()
         m_renderer.GetContext(),
         m_camera,
         m_gpuParticleSystem.GetParticleSrv(),
+        m_gpuParticleSystem.GetAliveIndexSrv(),
+        m_gpuParticleSystem.GetAliveCountSrv(),
         m_gpuParticleSystem.GetMaxParticleCount()
     );
 

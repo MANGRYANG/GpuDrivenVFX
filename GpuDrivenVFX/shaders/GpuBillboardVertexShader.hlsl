@@ -32,6 +32,12 @@ cbuffer CameraBuffer : register(b0)
 // GPU Particle Buffer를 정점 셰이더에서 읽기 위한 Structured Buffer
 StructuredBuffer<GpuParticleData> particles : register(t0);
 
+// active Particle의 원본 Particle 인덱스 목록
+StructuredBuffer<uint> aliveIndices : register(t1);
+
+// 현재 프레임의 active Particle 개수
+StructuredBuffer<uint> aliveCount : register(t2);
+
 // GPU Billboard Vertex Buffer로부터 입력받는 데이터 구조체
 struct VSInput
 {
@@ -52,26 +58,39 @@ struct VSOutput
 VSOutput VS_Main(VSInput input, uint instanceId : SV_InstanceID)
 {
     VSOutput output;
+    
+    // 현재 프레임의 active Particle 개수 조회
+    uint currentAliveCount = aliveCount[0];
+    
+    // -- 현재 상태에서는 MaxParticleCount만큼 Draw 수행
+    // -- 다음 커밋에서 DrawIndirect를 사용하도록 변경하여 해결 
+    // Active Particle 개수 범위를 벗어난 인스턴스는 면적 0 Quad로 처리
+    if (instanceId >= currentAliveCount)
+    {
+        output.Pos = float4(0.0f, 0.0f, 0.0f, 1.0f);
+        output.Color = float4(0.0f, 0.0f, 0.0f, 0.0f);
 
-    // 현재 인스턴스에 대응하는 GPU Particle 데이터 조회
-    GpuParticleData particle = particles[instanceId];
+        return output;
+    }
 
-    // 비활성 Particle은 크기와 색상을 0으로 만들어 렌더링 결과가 나타나지 않도록 처리
-    float billboardSize = particle.active != 0 ? particle.size : 0.0f;
-    float4 billboardColor = particle.active != 0 ? particle.color : float4(0.0f, 0.0f, 0.0f, 0.0f);
+    // 현재 인스턴스에 대응하는 active Particle의 원본 Particle 인덱스 조회
+    uint particleIndex = aliveIndices[instanceId];
+
+    // active Particle 인덱스를 통해 GPU Particle 데이터 조회
+    GpuParticleData particle = particles[particleIndex];
 
     // Billboard 중심점을 월드 공간에서 뷰 공간으로 변환
     float4 centerView = mul(float4(particle.position, 1.0f), view);
 
     // 뷰 공간의 X/Y 평면에서 Quad를 확장해 카메라를 향하는 Billboard를 구성
     float4 positionView = centerView;
-    positionView.xy += input.Corner.xy * billboardSize;
+    positionView.xy += input.Corner.xy * particle.size;
 
     // 뷰 공간 위치를 투영 좌표계로 변환
     output.Pos = mul(positionView, projection);
 
     // Particle 색상을 Pixel Shader로 전달
-    output.Color = billboardColor;
+    output.Color = particle.color;
 
     return output;
 }
