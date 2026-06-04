@@ -25,8 +25,7 @@ public:
         const Camera& camera,
         ID3D11ShaderResourceView* particleSrv,
         ID3D11ShaderResourceView* aliveIndexSrv,
-        ID3D11ShaderResourceView* aliveCountSrv,
-        std::size_t particleCount
+        ID3D11ShaderResourceView* aliveCountSrv
     );
 
 private:
@@ -39,8 +38,17 @@ private:
     // Billboard 렌더링에 사용할 카메라 변환 상수 버퍼를 생성하는 함수
     bool CreateCameraBuffer(ID3D11Device* device);
 
+    // DrawIndexedInstancedIndirect에 사용할 argument buffer를 생성하는 함수
+    bool CreateIndirectArgsBuffer(ID3D11Device* device);
+
+    // Indirect draw argument buffer를 갱신할 Compute Shader를 생성하는 함수
+    bool CreateIndirectArgsComputeShader(ID3D11Device* device);
+
     // 현재 프레임에서 사용할 카메라 변환 행렬을 갱신하는 함수
     void UpdateCameraBuffer(ID3D11DeviceContext* context, const Camera& camera);
+
+    // 현재 active Particle 개수를 기반으로 indirect draw argument buffer를 갱신하는 함수
+    void UpdateIndirectArgsBuffer(ID3D11DeviceContext* context, ID3D11ShaderResourceView* aliveCountSrv);
 
 private:
     // GPU Billboard 렌더링에 사용할 셰이더
@@ -54,6 +62,15 @@ private:
     Microsoft::WRL::ComPtr<ID3D11InputLayout> m_inputLayout;
     // Billboard 렌더링에 사용할 view/projection 상수 버퍼
     Microsoft::WRL::ComPtr<ID3D11Buffer> m_cameraBuffer;
+
+    // DrawIndexedInstancedIndirect 호출에 사용할 argument buffer
+    Microsoft::WRL::ComPtr<ID3D11Buffer> m_indirectArgsBuffer;
+
+    // Compute Shader에서 indirect argument buffer를 쓰기 위한 UAV
+    Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> m_indirectArgsUav;
+
+    // indirect argument buffer를 갱신하는 Compute Shader
+    Microsoft::WRL::ComPtr<ID3D11ComputeShader> m_indirectArgsComputeShader;
 
     // Quad 정점 한 개가 차지하는 바이트 크기
     UINT m_vertexStride = 0;

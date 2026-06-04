@@ -40,5 +40,6 @@
     <FxCompile Include="shaders\CpuBillboardVertexShader.hlsl" />
     <FxCompile Include="shaders\GpuParticleUpdateComputeShader.hlsl" />
     <FxCompile Include="shaders\GpuBillboardVertexShader.hlsl" />
+    <FxCompile Include="shaders\GpuBillboardDrawArgsComputeShader.hlsl" />
   </ItemGroup>
 </Project>

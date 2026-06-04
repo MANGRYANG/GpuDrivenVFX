@@ -35,9 +35,6 @@ StructuredBuffer<GpuParticleData> particles : register(t0);
 // active Particle의 원본 Particle 인덱스 목록
 StructuredBuffer<uint> aliveIndices : register(t1);
 
-// 현재 프레임의 active Particle 개수
-StructuredBuffer<uint> aliveCount : register(t2);
-
 // GPU Billboard Vertex Buffer로부터 입력받는 데이터 구조체
 struct VSInput
 {
@@ -59,20 +56,6 @@ VSOutput VS_Main(VSInput input, uint instanceId : SV_InstanceID)
 {
     VSOutput output;
     
-    // 현재 프레임의 active Particle 개수 조회
-    uint currentAliveCount = aliveCount[0];
-    
-    // -- 현재 상태에서는 MaxParticleCount만큼 Draw 수행
-    // -- 다음 커밋에서 DrawIndirect를 사용하도록 변경하여 해결 
-    // Active Particle 개수 범위를 벗어난 인스턴스는 면적 0 Quad로 처리
-    if (instanceId >= currentAliveCount)
-    {
-        output.Pos = float4(0.0f, 0.0f, 0.0f, 1.0f);
-        output.Color = float4(0.0f, 0.0f, 0.0f, 0.0f);
-
-        return output;
-    }
-
     // 현재 인스턴스에 대응하는 active Particle의 원본 Particle 인덱스 조회
     uint particleIndex = aliveIndices[instanceId];
 

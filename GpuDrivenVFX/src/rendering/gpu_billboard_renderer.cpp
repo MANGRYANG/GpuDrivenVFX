@@ -59,6 +59,20 @@ bool GpuBillboardRenderer::Initialize(ID3D11Device* device)
         return false;
     }
 
+    // Indirect Draw argument buffer 생성
+    if (!CreateIndirectArgsBuffer(device))
+    {
+        // 생성하지 못한 경우 실패 처리
+        return false;
+    }
+
+    // Indirect Draw argument buffer 갱신용 Compute Shader 생성
+    if (!CreateIndirectArgsComputeShader(device))
+    {
+        // 생성하지 못한 경우 실패 처리
+        return false;
+    }
+
     return true;
 }
 
@@ -243,6 +257,128 @@ bool GpuBillboardRenderer::CreateCameraBuffer(ID3D11Device* device)
     return true;
 }
 
+bool GpuBillboardRenderer::CreateIndirectArgsBuffer(ID3D11Device* device)
+{
+    // 디바이스가 누락된 경우
+    if (!device)
+    {
+        // 메시지 박스 플로팅
+        MessageBoxW(nullptr, L"Invalid device.", L"GpuBillboardRenderer Error", MB_OK | MB_ICONERROR);
+
+        return false;
+    }
+
+    // DrawIndexedInstancedIndirect argument 초기 값
+    // [0] IndexCountPerInstance = 6
+    // [1] InstanceCount = 0
+    // [2] StartIndexLocation = 0
+    // [3] BaseVertexLocation = 0
+    // [4] StartInstanceLocation = 0
+    const UINT initialArgs[5] =
+    {
+        6,
+        0,
+        0,
+        0,
+        0
+    };
+
+    D3D11_BUFFER_DESC bufferDesc = {};
+    bufferDesc.ByteWidth = sizeof(initialArgs);
+    bufferDesc.Usage = D3D11_USAGE_DEFAULT;
+    bufferDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS;
+    bufferDesc.CPUAccessFlags = 0;
+    bufferDesc.MiscFlags = D3D11_RESOURCE_MISC_DRAWINDIRECT_ARGS | D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS;
+    bufferDesc.StructureByteStride = 0;
+
+    D3D11_SUBRESOURCE_DATA initialData = {};
+    initialData.pSysMem = initialArgs;
+
+    HRESULT hr = device->CreateBuffer
+    (
+        &bufferDesc,
+        &initialData,
+        m_indirectArgsBuffer.GetAddressOf()
+    );
+
+    // 버퍼 생성에 실패한 경우
+    if (FAILED(hr))
+    {
+        // 메시지 박스 플로팅
+        MessageBoxW(nullptr, L"Failed to create GPU billboard indirect args buffer.", L"GpuBillboardRenderer Error", MB_OK | MB_ICONERROR);
+
+        return false;
+    }
+
+    D3D11_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+    uavDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+    uavDesc.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
+    uavDesc.Buffer.FirstElement = 0;
+    uavDesc.Buffer.NumElements = ARRAYSIZE(initialArgs);
+    uavDesc.Buffer.Flags = D3D11_BUFFER_UAV_FLAG_RAW;
+
+    hr = device->CreateUnorderedAccessView
+    (
+        m_indirectArgsBuffer.Get(),
+        &uavDesc,
+        m_indirectArgsUav.GetAddressOf()
+    );
+
+    // 버퍼 생성에 실패한 경우
+    if (FAILED(hr))
+    {
+        // 메시지 박스 플로팅
+        MessageBoxW(nullptr, L"Failed to create GPU billboard indirect args UAV.", L"GpuBillboardRenderer Error", MB_OK | MB_ICONERROR);
+
+        return false;
+    }
+
+    return true;
+}
+
+bool GpuBillboardRenderer::CreateIndirectArgsComputeShader(ID3D11Device* device)
+{
+    // 디바이스가 누락된 경우
+    if (!device)
+    {
+        return false;
+    }
+
+    Microsoft::WRL::ComPtr<ID3DBlob> computeShaderBlob;
+
+    // Compute Shader 컴파일
+    if (!Shader::CompileShaderFromFile
+    (
+        L"shaders/GpuBillboardDrawArgsComputeShader.hlsl",
+        "CS_Main",
+        "cs_5_0",
+        computeShaderBlob
+    ))
+    {
+        // 컴파일하지 못한 경우 실패 처리
+        return false;
+    }
+
+    HRESULT hr = device->CreateComputeShader
+    (
+        computeShaderBlob->GetBufferPointer(),
+        computeShaderBlob->GetBufferSize(),
+        nullptr,
+        m_indirectArgsComputeShader.GetAddressOf()
+    );
+
+    // Compute Shader 객체 생성에 실패한 경우
+    if (FAILED(hr))
+    {
+        // 메시지 박스 플로팅
+        MessageBoxW(nullptr, L"Failed to create GPU billboard indirect args compute shader.", L"GpuBillboardRenderer Error", MB_OK | MB_ICONERROR);
+
+        return false;
+    }
+
+    return true;
+}
+
 void GpuBillboardRenderer::UpdateCameraBuffer(ID3D11DeviceContext* context, const Camera& camera)
 {
     // 디바이스 컨텍스트나 카메라 버퍼가 누락된 경우
@@ -287,14 +423,79 @@ void GpuBillboardRenderer::UpdateCameraBuffer(ID3D11DeviceContext* context, cons
     );
 }
 
+void GpuBillboardRenderer::UpdateIndirectArgsBuffer(ID3D11DeviceContext* context, ID3D11ShaderResourceView* aliveCountSrv)
+{
+    // Indirect Argument Buffer 갱신에 필요한 리소스가 누락된 경우
+    if (!context || !aliveCountSrv || !m_indirectArgsUav.Get() || !m_indirectArgsComputeShader.Get())
+    {
+        return;
+    }
+
+    // indirect argument 갱신용 Compute Shader 바인딩
+    context->CSSetShader(m_indirectArgsComputeShader.Get(), nullptr, 0);
+
+    // active Particle 개수 SRV를 Compute Shader에 바인딩
+    ID3D11ShaderResourceView* shaderResourceViews[] =
+    {
+        aliveCountSrv
+    };
+
+    context->CSSetShaderResources
+    (
+        0,
+        1,
+        shaderResourceViews
+    );
+
+    // indirect argument buffer UAV 바인딩
+    ID3D11UnorderedAccessView* unorderedAccessViews[] =
+    {
+        m_indirectArgsUav.Get()
+    };
+
+    context->CSSetUnorderedAccessViews
+    (
+        0,
+        1,
+        unorderedAccessViews,
+        nullptr
+    );
+
+    // draw argument는 하나만 작성하면 되므로 thread group 1개만 실행
+    context->Dispatch(1, 1, 1);
+
+    // 이후 DrawIndexedInstancedIndirect에서 Indirect Argument Buffer를 읽을 수 있도록 UAV 바인딩 해제
+    ID3D11UnorderedAccessView* nullUnorderedAccessViews[] = { nullptr };
+
+    context->CSSetUnorderedAccessViews
+    (
+        0,
+        1,
+        nullUnorderedAccessViews,
+        nullptr
+    );
+
+    // 다음 프레임 aliveCount UAV 사용과 충돌하지 않도록 SRV 바인딩 해제
+    ID3D11ShaderResourceView* nullShaderResourceViews[] = { nullptr };
+
+    context->CSSetShaderResources
+    (
+        0,
+        1,
+        nullShaderResourceViews
+    );
+
+    // Compute Shader 바인딩 해제
+    context->CSSetShader(nullptr, nullptr, 0);
+}
+
 void GpuBillboardRenderer::Render
 (
     ID3D11DeviceContext* context,
     const Camera& camera,
     ID3D11ShaderResourceView* particleSrv,
     ID3D11ShaderResourceView* aliveIndexSrv,
-    ID3D11ShaderResourceView* aliveCountSrv,
-    std::size_t particleCount
+    ID3D11ShaderResourceView* aliveCountSrv
 )
 {
     // 디바이스 컨텍스트가 누락된 경우
@@ -309,11 +510,8 @@ void GpuBillboardRenderer::Render
         return;
     }
 
-    // 렌더링할 Particle 슬롯이 없는 경우
-    if (particleCount == 0)
-    {
-        return;
-    }
+    // 현재 active Particle 개수를 기반으로 indirect draw argument buffer 갱신
+    UpdateIndirectArgsBuffer(context, aliveCountSrv);
 
     // GPU Billboard 셰이더 바인딩
     m_shader.Bind(context);
@@ -321,18 +519,17 @@ void GpuBillboardRenderer::Render
     // 현재 프레임에서 사용할 카메라 변환 행렬을 정점 셰이더에 전달
     UpdateCameraBuffer(context, camera);
 
-    // GPU Particle Buffer, alive index list, alive count를 정점 셰이더에 바인딩
+    // GPU Particle Buffer, alive index list를 정점 셰이더에 바인딩
     ID3D11ShaderResourceView* shaderResourceViews[] =
     {
         particleSrv,
         aliveIndexSrv,
-        aliveCountSrv
     };
 
     context->VSSetShaderResources
     (
         0,
-        3,
+        2,
         shaderResourceViews
     );
 
@@ -369,12 +566,9 @@ void GpuBillboardRenderer::Render
     context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
     // GPU Particle Buffer의 각 Particle 슬롯을 하나의 Billboard 인스턴스로 렌더링
-    context->DrawIndexedInstanced
+    context->DrawIndexedInstancedIndirect
     (
-        m_indexCount,
-        static_cast<UINT>(particleCount),
-        0,
-        0,
+        m_indirectArgsBuffer.Get(),
         0
     );
 
@@ -382,14 +576,13 @@ void GpuBillboardRenderer::Render
     ID3D11ShaderResourceView* nullShaderResourceViews[] =
     {
         nullptr,
-        nullptr,
         nullptr
     };
 
     context->VSSetShaderResources
     (
         0,
-        3,
+        2,
         nullShaderResourceViews
     );
 }

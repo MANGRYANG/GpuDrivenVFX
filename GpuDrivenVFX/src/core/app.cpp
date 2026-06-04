@@ -328,8 +328,7 @@ void App::Render()
         m_camera,
         m_gpuParticleSystem.GetParticleSrv(),
         m_gpuParticleSystem.GetAliveIndexSrv(),
-        m_gpuParticleSystem.GetAliveCountSrv(),
-        m_gpuParticleSystem.GetMaxParticleCount()
+        m_gpuParticleSystem.GetAliveCountSrv()
     );
 
     // 최종 화면 출력
