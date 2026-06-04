@@ -89,14 +89,22 @@ void CS_Main(uint3 dispatchThreadId : SV_DispatchThreadID)
     bool shouldSpawn = false;
 
     // Ring Buffer 방식으로 spawnStartIndex부터 spawnCount개 슬롯에 새 Particle 생성
-    for (uint spawnOffset = 0; spawnOffset < spawnCount; ++spawnOffset)
-    {
-        uint targetIndex = (spawnStartIndex + spawnOffset) % particleCount;
+    uint spawnEndIndex = spawnStartIndex + spawnCount;
 
-        if (particleIndex == targetIndex)
+    if (spawnCount > 0)
+    {
+        // 배열 끝을 넘지 않는 경우
+        if (spawnEndIndex <= particleCount)
         {
-            shouldSpawn = true;
-            break;
+            shouldSpawn = (particleIndex >= spawnStartIndex) && (particleIndex < spawnEndIndex);
+        }
+        
+        // 배열 끝을 넘어서 맨 앞으로 돌아가는 경우
+        else
+        {
+            uint wrappedEndIndex = spawnEndIndex % particleCount;
+
+            shouldSpawn = (particleIndex >= spawnStartIndex) || (particleIndex < wrappedEndIndex);
         }
     }
 
