@@ -25,6 +25,17 @@ enum class ParticleSimulationMode
     GPU
 };
 
+// Particle 성능 측정 결과 구조체
+struct ParticlePerformanceStats
+{
+    // 현재 모드의 Particle Update 처리에 걸리는 시간
+    double updateMilliseconds = 0.0;
+    // 현재 모드의 Particle Render 처리에 걸리는 시간
+    double renderMilliseconds = 0.0;
+    // 현재 프레임에 대한 전체 처리 시간
+    double frameMilliseconds = 0.0;
+};
+
 class App
 {
 public:
@@ -103,9 +114,18 @@ private:
     bool m_wasGpuModeKeyDown = false;
 
 private:
-    // Particle 상태 디버그 메시지 출력 주기를 제어하기 위한 누적 시간
-    float m_particleDebugPrintAccumulator = 0.0f;
+    // Particle 성능 측정 메시지 출력 주기를 제어하기 위한 누적 시간
+    float m_particlePerformancePrintAccumulator = 0.0f;
 
-    // 현재 프레임의 Particle 상태 디버그 메시지를 출력하기 위한 함수
-    void PrintParticleDebugInfo(float deltaTime);
+    // 현재 프레임의 Particle 성능 측정 결과
+    ParticlePerformanceStats m_currentParticlePerformanceStats;
+
+    // 일정 시간 동안 누적한 Particle 성능 측정 결과
+    ParticlePerformanceStats m_accumulatedParticlePerformanceStats;
+
+    // 성능 측정 평균을 계산하기 위한 누적 샘플 개수
+    std::size_t m_particlePerformanceSampleCount = 0;
+
+    // 현재 Particle 성능 측정 결과를 Output 창에 출력하는 함수
+    void PrintParticlePerformanceInfo(float elapsedSeconds);
 };

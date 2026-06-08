@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "app.h"
 
+#include <chrono>
 #include <cstdio>
 
 namespace
@@ -15,6 +16,16 @@ namespace
 
     // 변환 버퍼는 상수 버퍼로 생성되므로, 16바이트 정렬 확인
     static_assert(sizeof(TransformBufferData) % 16 == 0, "Constant buffer size must be 16-byte aligned.(TransformBuffer)");
+
+    // 두 시점 사이의 경과 시간을 Milliseconds 단위로 계산하는 내부 헬퍼
+    double CalculateElapsedMilliseconds
+    (
+        const std::chrono::steady_clock::time_point& startTime,
+        const std::chrono::steady_clock::time_point& endTime
+    )
+    {
+        return std::chrono::duration<double, std::milli>(endTime - startTime).count();
+    }
 }
 
 bool App::Initialize(HINSTANCE hInstance, int nCmdShow)
@@ -160,10 +171,26 @@ int App::Run()
             break;
         }
 
+        // 현재 프레임 처리 시간 측정 시작
+        const auto frameStartTime = std::chrono::steady_clock::now();
+
         // 애플리케이션 내부 데이터 및 상태 업데이트
         Update();
         // 애플리케이션 화면 렌더링
         Render();
+
+        // 현재 프레임 처리 시간 측정 종료
+        const auto frameEndTime = std::chrono::steady_clock::now();
+
+        // 현재 프레임 전체 처리 시간 저장
+        m_currentParticlePerformanceStats.frameMilliseconds =
+            CalculateElapsedMilliseconds(frameStartTime, frameEndTime);
+
+        // 현재 Particle 성능 측정 결과 출력
+        PrintParticlePerformanceInfo
+        (
+            static_cast<float>(m_currentParticlePerformanceStats.frameMilliseconds / 1000.0)
+        );
     }
 
     return 0;
@@ -328,6 +355,9 @@ void App::Update()
     // Particle 시뮬레이션 모드 전환 입력 처리
     ProcessParticleSimulationModeInput();
 
+    // Particle Update 구간 시간 측정 시작
+    const auto updateStartTime = std::chrono::steady_clock::now();
+
     // 현재 선택된 시뮬레이션 모드에 따라 하나의 경로만 업데이트
     switch (m_particleSimulationMode)
     {
@@ -342,14 +372,20 @@ void App::Update()
         break;
     }
 
-    // 현재 프레임의 Particle 상태 디버그 메시지 출력
-    PrintParticleDebugInfo(deltaTime);
+    // Particle Update 구간 시간 측정 종료
+    const auto updateEndTime = std::chrono::steady_clock::now();
+
+    // 현재 프레임의 Particle Update 구간 시간 저장
+    m_currentParticlePerformanceStats.updateMilliseconds =
+        CalculateElapsedMilliseconds(updateStartTime, updateEndTime);
 }
 
 void App::Render()
 {
-    // 프레임 드로우 준비 및 배경 색 초기화 (#0D141F)
     m_renderer.BeginFrame(0.05f, 0.08f, 0.12f, 1.0f);
+
+    // Particle Render 구간 시간 측정 시작
+    const auto renderStartTime = std::chrono::steady_clock::now();
 
     // 현재 선택된 Particle 시뮬레이션 모드에 따라 하나의 렌더링 경로만 실행
     switch (m_particleSimulationMode)
@@ -375,50 +411,109 @@ void App::Render()
         break;
     }
 
-    // 최종 화면 출력
+    // Particle Render 구간 시간 측정 종료
+    const auto renderEndTime = std::chrono::steady_clock::now();
+
+    // 현재 프레임의 Particle Render 구간 시간 저장
+    m_currentParticlePerformanceStats.renderMilliseconds =
+        CalculateElapsedMilliseconds(renderStartTime, renderEndTime);
+
     m_renderer.EndFrame();
 }
 
-void App::PrintParticleDebugInfo(float deltaTime)
+void App::PrintParticlePerformanceInfo(float elapsedSeconds)
 {
-    // Particle 상태 디버그 출력 누적 시간 갱신
-    m_particleDebugPrintAccumulator += deltaTime;
+    // Particle 성능 측정 출력 누적 시간 갱신
+    m_particlePerformancePrintAccumulator += elapsedSeconds;
 
-    // 1초마다 Particle 상태를 Output 창에 출력
-    if (m_particleDebugPrintAccumulator >= 1.0f)
+    // 현재 프레임 성능 측정값 누적
+    m_accumulatedParticlePerformanceStats.updateMilliseconds +=
+        m_currentParticlePerformanceStats.updateMilliseconds;
+
+    m_accumulatedParticlePerformanceStats.renderMilliseconds +=
+        m_currentParticlePerformanceStats.renderMilliseconds;
+
+    m_accumulatedParticlePerformanceStats.frameMilliseconds +=
+        m_currentParticlePerformanceStats.frameMilliseconds;
+
+    ++m_particlePerformanceSampleCount;
+
+    // 1초마다 Particle 성능 측정 결과를 Output 창에 출력
+    if (m_particlePerformancePrintAccumulator < 1.0f)
     {
-        // 다음 출력 주기를 위해 누적 시간 감소
-        m_particleDebugPrintAccumulator -= 1.0f;
-
-        // Particle 상태 출력 문자열 구성
-        wchar_t debugText[128] = {};
-
-        switch (m_particleSimulationMode)
-        {
-        case ParticleSimulationMode::CPU:
-            swprintf_s
-            (
-                debugText,
-                128,
-                L"[Particle][CPU] render=%zu / max=%zu, dropped=%zu\n",
-                m_cpuParticleSystem.GetRenderParticleCount(),
-                m_cpuParticleSystem.GetMaxParticleCount(),
-                m_cpuParticleSystem.GetDroppedSpawnCount()
-            );
-            break;
-
-        case ParticleSimulationMode::GPU:
-            swprintf_s
-            (
-                debugText,
-                128,
-                L"[Particle][GPU] max=%zu, draw=indirect\n",
-                m_gpuParticleSystem.GetMaxParticleCount()
-            );
-            break;
-        }
-
-        // Output 창에 Particle 상태 출력
-        OutputDebugStringW(debugText);
+        return;
     }
+
+    // 샘플이 없는 경우 출력하지 않음
+    if (m_particlePerformanceSampleCount == 0)
+    {
+        return;
+    }
+
+    // 평균 계산에 사용할 샘플 개수
+    const double sampleCount = static_cast<double>(m_particlePerformanceSampleCount);
+
+    // 1초간 누적된 샘플을 바탕으로 평균 Update 소요 시간(ms) 계산
+    const double averageUpdateMilliseconds =
+        m_accumulatedParticlePerformanceStats.updateMilliseconds / sampleCount;
+
+    // 1초간 누적된 샘플을 바탕으로 평균 Render 소요 시간(ms) 계산
+    const double averageRenderMilliseconds =
+        m_accumulatedParticlePerformanceStats.renderMilliseconds / sampleCount;
+
+    // 1초간 누적된 샘플을 바탕으로 평균 총 프레임 처리 시간(ms) 계산
+    const double averageFrameMilliseconds =
+        m_accumulatedParticlePerformanceStats.frameMilliseconds / sampleCount;
+
+    // 평균 프레임 시간을 바탕으로 초당 프레임 수(FPS) 계산
+    const double fps = averageFrameMilliseconds > 0.0
+        ? 1000.0 / averageFrameMilliseconds
+        : 0.0;
+
+    // Particle 성능 측정 출력 문자열 구성
+    wchar_t debugText[256] = {};
+
+    switch (m_particleSimulationMode)
+    {
+    case ParticleSimulationMode::CPU:
+        swprintf_s
+        (
+            debugText,
+            256,
+            L"[Perf][CPU] particles=%zu, update=%.3fms, render=%.3fms, frame=%.3fms, fps=%.1f, dropped=%zu\n",
+            m_cpuParticleSystem.GetMaxParticleCount(),
+            averageUpdateMilliseconds,
+            averageRenderMilliseconds,
+            averageFrameMilliseconds,
+            fps,
+            m_cpuParticleSystem.GetDroppedSpawnCount()
+        );
+        break;
+
+    case ParticleSimulationMode::GPU:
+        swprintf_s
+        (
+            debugText,
+            256,
+            L"[Perf][GPU] particles=%zu, update_submit=%.3fms, render_submit=%.3fms, frame=%.3fms, fps=%.1f\n",
+            m_gpuParticleSystem.GetMaxParticleCount(),
+            averageUpdateMilliseconds,
+            averageRenderMilliseconds,
+            averageFrameMilliseconds,
+            fps
+        );
+        break;
+    }
+
+    // Output 창에 Particle 성능 측정 결과 출력
+    OutputDebugStringW(debugText);
+
+    // 다음 출력 주기를 위해 누적 시간 감소
+    m_particlePerformancePrintAccumulator -= 1.0f;
+
+    // 누적 성능 측정값 초기화
+    m_accumulatedParticlePerformanceStats = ParticlePerformanceStats{};
+
+    // 누적 샘플 개수 초기화
+    m_particlePerformanceSampleCount = 0;
 }
