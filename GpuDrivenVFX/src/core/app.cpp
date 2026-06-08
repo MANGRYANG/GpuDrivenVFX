@@ -289,6 +289,34 @@ void App::UpdateTransformBuffer(ID3D11DeviceContext* context)
     );
 }
 
+void App::ProcessParticleSimulationModeInput()
+{
+    // 숫자 1 키의 현재 입력 상태 확인
+    const bool isCpuModeKeyDown = (GetAsyncKeyState('1') & 0x8000) != 0;
+    // 숫자 2 키의 현재 입력 상태 확인
+    const bool isGpuModeKeyDown = (GetAsyncKeyState('2') & 0x8000) != 0;
+
+    // 숫자 1 키가 이번 프레임에 새로 눌린 경우 CPU Particle 모드로 전환
+    if (isCpuModeKeyDown && !m_wasCpuModeKeyDown)
+    {
+        m_particleSimulationMode = ParticleSimulationMode::CPU;
+
+        OutputDebugStringW(L"[Particle] mode = CPU\n");
+    }
+
+    // 숫자 2 키가 이번 프레임에 새로 눌린 경우 GPU Particle 모드로 전환
+    if (isGpuModeKeyDown && !m_wasGpuModeKeyDown)
+    {
+        m_particleSimulationMode = ParticleSimulationMode::GPU;
+
+        OutputDebugStringW(L"[Particle] mode = GPU\n");
+    }
+
+    // 다음 프레임 입력 비교를 위해 현재 키 상태 저장
+    m_wasCpuModeKeyDown = isCpuModeKeyDown;
+    m_wasGpuModeKeyDown = isGpuModeKeyDown;
+}
+
 void App::Update()
 {
     // 현재 프레임의 deltaTime 갱신
@@ -297,15 +325,25 @@ void App::Update()
     // 현재 프레임에서 사용할 deltaTime 값 조회
     const float deltaTime = m_frameTimer.GetDeltaTime();
 
-    // 실제 deltaTime 값으로 CPU Particle System 업데이트
-    m_cpuParticleSystem.Update(deltaTime);
+    // Particle 시뮬레이션 모드 전환 입력 처리
+    ProcessParticleSimulationModeInput();
 
-    // GPU Compute Shader를 사용해 GPU Particle System 업데이트
-    m_gpuParticleSystem.Update(m_renderer.GetContext(), deltaTime);
+    // 현재 선택된 시뮬레이션 모드에 따라 하나의 경로만 업데이트
+    switch (m_particleSimulationMode)
+    {
+    case ParticleSimulationMode::CPU:
+        // 실제 deltaTime 값으로 CPU Particle System 업데이트
+        m_cpuParticleSystem.Update(deltaTime);
+        break;
+
+    case ParticleSimulationMode::GPU:
+        // GPU Compute Shader를 사용해 GPU Particle System 업데이트
+        m_gpuParticleSystem.Update(m_renderer.GetContext(), deltaTime);
+        break;
+    }
 
     // 현재 프레임의 Particle 상태 디버그 메시지 출력
     PrintParticleDebugInfo(deltaTime);
-    
 }
 
 void App::Render()
@@ -313,23 +351,29 @@ void App::Render()
     // 프레임 드로우 준비 및 배경 색 초기화 (#0D141F)
     m_renderer.BeginFrame(0.05f, 0.08f, 0.12f, 1.0f);
 
-    // CPU Particle Billboard Quads 렌더링
-    m_cpuBillboardRenderer.Render
-    (
-        m_renderer.GetContext(),
-        m_camera,
-        m_cpuParticleSystem.GetBillboards()
-    );
+    // 현재 선택된 Particle 시뮬레이션 모드에 따라 하나의 렌더링 경로만 실행
+    switch (m_particleSimulationMode)
+    {
+    case ParticleSimulationMode::CPU:
+        m_cpuBillboardRenderer.Render
+        (
+            m_renderer.GetContext(),
+            m_camera,
+            m_cpuParticleSystem.GetBillboards()
+        );
+        break;
 
-    // GPU Particle Buffer를 Billboard Quads로 렌더링
-    m_gpuBillboardRenderer.Render
-    (
-        m_renderer.GetContext(),
-        m_camera,
-        m_gpuParticleSystem.GetParticleSrv(),
-        m_gpuParticleSystem.GetAliveIndexSrv(),
-        m_gpuParticleSystem.GetAliveCountSrv()
-    );
+    case ParticleSimulationMode::GPU:
+        m_gpuBillboardRenderer.Render
+        (
+            m_renderer.GetContext(),
+            m_camera,
+            m_gpuParticleSystem.GetParticleSrv(),
+            m_gpuParticleSystem.GetAliveIndexSrv(),
+            m_gpuParticleSystem.GetAliveCountSrv()
+        );
+        break;
+    }
 
     // 최종 화면 출력
     m_renderer.EndFrame();
@@ -348,15 +392,31 @@ void App::PrintParticleDebugInfo(float deltaTime)
 
         // Particle 상태 출력 문자열 구성
         wchar_t debugText[128] = {};
-        swprintf_s
-        (
-            debugText,
-            128,
-            L"[Particle] render=%zu / max=%zu, dropped=%zu\n",
-            m_cpuParticleSystem.GetRenderParticleCount(),
-            m_cpuParticleSystem.GetMaxParticleCount(),
-            m_cpuParticleSystem.GetDroppedSpawnCount()
-        );
+
+        switch (m_particleSimulationMode)
+        {
+        case ParticleSimulationMode::CPU:
+            swprintf_s
+            (
+                debugText,
+                128,
+                L"[Particle][CPU] render=%zu / max=%zu, dropped=%zu\n",
+                m_cpuParticleSystem.GetRenderParticleCount(),
+                m_cpuParticleSystem.GetMaxParticleCount(),
+                m_cpuParticleSystem.GetDroppedSpawnCount()
+            );
+            break;
+
+        case ParticleSimulationMode::GPU:
+            swprintf_s
+            (
+                debugText,
+                128,
+                L"[Particle][GPU] max=%zu, draw=indirect\n",
+                m_gpuParticleSystem.GetMaxParticleCount()
+            );
+            break;
+        }
 
         // Output 창에 Particle 상태 출력
         OutputDebugStringW(debugText);

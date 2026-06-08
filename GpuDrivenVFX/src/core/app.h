@@ -18,6 +18,13 @@
 #include "particle/cpu_particle_system.h"
 #include "particle/gpu_particle_system.h"
 
+// 시뮬레이션 실행 모드
+enum class ParticleSimulationMode
+{
+    CPU,
+    GPU
+};
+
 class App
 {
 public:
@@ -39,6 +46,9 @@ private:
     DirectX::XMMATRIX BuildQuadWorldMatrix() const;
     // 현재 프레임에서 사용할 변환 행렬을 GPU에 전달하는 함수
     void UpdateTransformBuffer(ID3D11DeviceContext* context);
+
+    // 시뮬레이션 모드 전환 입력을 처리하는 함수
+    void ProcessParticleSimulationModeInput();
 
     // 애플리케이션 내부 데이터 및 상태 업데이트 함수
     void Update();
@@ -81,6 +91,16 @@ private:
 
     // 애플리케이션 종료 조건 제어용 변수
     bool m_running = true;
+
+private:
+    // 현재 적용 중인 시뮬레이션 모드
+    ParticleSimulationMode m_particleSimulationMode = ParticleSimulationMode::CPU;
+
+    // 이전 프레임에서 CPU 모드 전환 키가 눌려 있었는지 여부
+    bool m_wasCpuModeKeyDown = false;
+
+    // 이전 프레임에서 GPU 모드 전환 키가 눌려 있었는지 여부
+    bool m_wasGpuModeKeyDown = false;
 
 private:
     // Particle 상태 디버그 메시지 출력 주기를 제어하기 위한 누적 시간
