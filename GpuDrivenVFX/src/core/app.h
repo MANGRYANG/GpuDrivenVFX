@@ -1,6 +1,7 @@
 #pragma once
 
 #include <DirectXMath.h>
+#include <fstream>
 #include <vector>
 
 #include "core/frame_timer.h"
@@ -126,6 +127,21 @@ private:
     // 성능 측정 평균을 계산하기 위한 누적 샘플 개수
     std::size_t m_particlePerformanceSampleCount = 0;
 
+    // Particle 성능 측정 결과를 기록할 CSV 파일 스트림
+    std::ofstream m_particlePerformanceCsvFile;
+
     // 현재 Particle 성능 측정 결과를 Output 창에 출력하는 함수
     void PrintParticlePerformanceInfo(float elapsedSeconds);
+
+    // Particle 성능 측정 결과를 기록할 CSV 파일을 초기화하는 함수
+    void InitializeParticlePerformanceCsvLog();
+
+    // 현재 평균 성능 측정 결과를 CSV 파일에 기록하는 함수
+    void WriteParticlePerformanceCsvRow
+    (
+        double averageUpdateMilliseconds,
+        double averageRenderMilliseconds,
+        double averageFrameMilliseconds,
+        double fps
+    );
 };

@@ -3,6 +3,7 @@
 
 #include <chrono>
 #include <cstdio>
+#include <iomanip>
 
 namespace
 {
@@ -153,6 +154,9 @@ bool App::Initialize(HINSTANCE hInstance, int nCmdShow)
 
     // 프레임 시간 측정을 위한 타이머 초기화
     m_frameTimer.Initialize();
+
+    // Particle 성능 측정 CSV 로그 파일 초기화
+    InitializeParticlePerformanceCsvLog();
 
     return true;
 }
@@ -508,6 +512,15 @@ void App::PrintParticlePerformanceInfo(float elapsedSeconds)
     // Output 창에 Particle 성능 측정 결과 출력
     OutputDebugStringW(debugText);
 
+    // 계산된 평균 성능 측정 결과를 CSV 파일에 기록
+    WriteParticlePerformanceCsvRow
+    (
+        averageUpdateMilliseconds,
+        averageRenderMilliseconds,
+        averageFrameMilliseconds,
+        fps
+    );
+
     // 다음 출력 주기를 위해 누적 시간 감소
     m_particlePerformancePrintAccumulator -= 1.0f;
 
@@ -516,4 +529,79 @@ void App::PrintParticlePerformanceInfo(float elapsedSeconds)
 
     // 누적 샘플 개수 초기화
     m_particlePerformanceSampleCount = 0;
+}
+
+void App::InitializeParticlePerformanceCsvLog()
+{
+    // 기존 CSV 로그 파일을 덮어쓰기 방식으로 생성
+    m_particlePerformanceCsvFile.open
+    (
+        "particle_performance.csv",
+        std::ios::out | std::ios::trunc
+    );
+
+    // CSV 파일을 열지 못한 경우 성능 로그 파일 출력만 비활성화
+    if (!m_particlePerformanceCsvFile.is_open())
+    {
+        OutputDebugStringW(L"[Perf] Failed to open particle_performance.csv\n");
+        return;
+    }
+
+    // CSV Header 작성
+    m_particlePerformanceCsvFile
+        << "mode,"
+        << "particle_capacity,"
+        << "update_ms,"
+        << "render_ms,"
+        << "frame_ms,"
+        << "fps\n";
+
+    // Header가 바로 파일에 기록되도록 flush
+    m_particlePerformanceCsvFile.flush();
+}
+
+void App::WriteParticlePerformanceCsvRow
+(
+    double averageUpdateMilliseconds,
+    double averageRenderMilliseconds,
+    double averageFrameMilliseconds,
+    double fps
+)
+{
+    // CSV 파일이 열려 있지 않은 경우 기록하지 않음
+    if (!m_particlePerformanceCsvFile.is_open())
+    {
+        return;
+    }
+
+    // 소수점 자릿수 고정
+    m_particlePerformanceCsvFile << std::fixed << std::setprecision(6);
+
+    switch (m_particleSimulationMode)
+    {
+    case ParticleSimulationMode::CPU:
+        m_particlePerformanceCsvFile
+            << "CPU,"
+            << m_cpuParticleSystem.GetMaxParticleCount() << ","
+            << averageUpdateMilliseconds << ","
+            << averageRenderMilliseconds << ","
+            << averageFrameMilliseconds << ","
+            << fps
+            << "\n";
+        break;
+
+    case ParticleSimulationMode::GPU:
+        m_particlePerformanceCsvFile
+            << "GPU,"
+            << m_gpuParticleSystem.GetMaxParticleCount() << ","
+            << averageUpdateMilliseconds << ","
+            << averageRenderMilliseconds << ","
+            << averageFrameMilliseconds << ","
+            << fps
+            << "\n";
+        break;
+    }
+
+    // 측정 중 프로그램이 종료되어도 기록 손실을 줄이기 위해 매 row마다 flush
+    m_particlePerformanceCsvFile.flush();
 }
