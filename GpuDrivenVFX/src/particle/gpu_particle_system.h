@@ -97,15 +97,15 @@ private:
     struct ParticleEmitter
     {
         // GPU Particle이 생성될 월드 공간 위치
-        DirectX::XMFLOAT3 position = DirectX::XMFLOAT3(0.0f, -0.5f, 0.0f);
+        DirectX::XMFLOAT3 position = ParticleConfig::EmitterPosition;
         // GPU Particle의 초기 이동 속도
-        DirectX::XMFLOAT3 velocity = DirectX::XMFLOAT3(0.0f, 0.25f, 0.0f);
+        DirectX::XMFLOAT3 velocity = ParticleConfig::EmitterVelocity;
         // GPU Particle을 Billboard로 렌더링할 때 사용할 크기
-        float particleSize = 0.01f;
+        float particleSize = ParticleConfig::ParticleSize;
         // GPU Particle의 총 생존 시간
-        float particleLifetime = 3.0f;
+        float particleLifetime = ParticleConfig::ParticleLifetime;
         // 초당 생성해야 하는 GPU Particle 개수
-        float spawnRate = 8.0f;
+        float spawnRate = ParticleConfig::SpawnRate;
         // 프레임마다 누적되는 생성 요청 수
         float spawnAccumulator = 0.0f;
         // 다음 프레임에 GPU Particle을 생성할 순환 슬롯 인덱스

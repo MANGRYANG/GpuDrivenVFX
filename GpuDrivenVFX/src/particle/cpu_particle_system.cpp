@@ -16,11 +16,11 @@ void CpuParticleSystem::Initialize()
     // Emitter 상태 초기화
     m_emitter = ParticleEmitter
     {
-        DirectX::XMFLOAT3(0.0f, -0.5f, 0.0f),       // 초기 월드 공간 위치
-        DirectX::XMFLOAT3(0.0f, 0.25f, 0.0f),       // 초기 이동 속도
-        0.01f,                                      // 크기
-        3.0f,                                       // 생존 시간
-        8.0f,                                       // 초당 생성해야 하는 Particle 개수
+        ParticleConfig::EmitterPosition,            // 초기 월드 공간 위치
+        ParticleConfig::EmitterVelocity,            // 초기 이동 속도
+        ParticleConfig::ParticleSize,               // 크기
+        ParticleConfig::ParticleLifetime,           // 생존 시간
+        ParticleConfig::SpawnRate,                  // 초당 생성해야 하는 Particle 개수
         0.0f,                                       // 프레임마다 누적되는 생성 요청 수
         0,                                          // 다음에 Particle을 생성할 순환 슬롯 인덱스
         DirectX::XMFLOAT4(1.0f, 0.65f, 0.1f, 1.0f)  // Particle 색상
