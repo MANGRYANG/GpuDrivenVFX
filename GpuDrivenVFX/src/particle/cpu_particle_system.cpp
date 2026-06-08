@@ -7,6 +7,8 @@ void CpuParticleSystem::Initialize()
     m_particles.clear();
     // 기존 Billboard 데이터 초기화
     m_billboards.clear();
+    // 생성 실패 카운터 초기화
+    m_droppedSpawnCount = 0;
 
     // 테스트 단계에서 사용할 Particle 슬롯 공간 확보
     m_particles.resize(ParticleConfig::ParticleCapacity);
@@ -17,9 +19,10 @@ void CpuParticleSystem::Initialize()
         DirectX::XMFLOAT3(0.0f, -0.5f, 0.0f),       // 초기 월드 공간 위치
         DirectX::XMFLOAT3(0.0f, 0.25f, 0.0f),       // 초기 이동 속도
         0.01f,                                      // 크기
-        4.0f,                                       // 생존 시간
+        3.0f,                                       // 생존 시간
         8.0f,                                       // 초당 생성해야 하는 Particle 개수
         0.0f,                                       // 프레임마다 누적되는 생성 요청 수
+        0,                                          // 다음에 Particle을 생성할 순환 슬롯 인덱스
         DirectX::XMFLOAT4(1.0f, 0.65f, 0.1f, 1.0f)  // Particle 색상
     };
 
@@ -68,36 +71,51 @@ bool CpuParticleSystem::SpawnParticle
     const DirectX::XMFLOAT4& color
 )
 {
-    // 비활성 Particle 슬롯을 검색
-    for (Particle& particle : m_particles)
+    // 사용할 수 있는 Particle 슬롯이 없는 경우
+    if (m_particles.empty())
     {
-        // 활성 Particle인 경우 무시
-        if (particle.active)
-        {
-            continue;
-        }
-
-        // Particle 위치 설정
-        particle.position = position;
-        // Particle 속도 설정
-        particle.velocity = velocity;
-        // Particle 렌더링 크기 설정
-        particle.size = size;
-        // Particle 생존 시간 설정
-        particle.lifetime = lifetime;
-        // Particle 경과 시간 초기화
-        particle.age = 0.0f;
-        // Particle 색상 설정
-        particle.color = color;
-        // Particle 활성화
-        particle.active = true;
-
-        return true;
+        ++m_droppedSpawnCount;
+        return false;
     }
 
-    // 사용 가능한 비활성 Particle 슬롯이 없는 경우
-    ++m_droppedSpawnCount;
-    return false;
+    // 이번 프레임에 생성할 Particle 슬롯 선택
+    const std::size_t particleIndex = m_emitter.spawnIndex;
+    Particle& particle = m_particles[particleIndex];
+
+    // 다음 생성 슬롯을 순환 방식으로 갱신
+    m_emitter.spawnIndex = (m_emitter.spawnIndex + 1) % m_particles.size();
+
+    // 슬롯 인덱스를 사용해 수평 퍼짐을 부여
+    const float spread = static_cast<float>(particleIndex % 4) - 2.0f;
+
+    // Particle 위치 설정
+    particle.position = DirectX::XMFLOAT3
+    (
+        position.x + spread * 0.03f,
+        position.y,
+        position.z
+    );
+
+    // Particle 속도 설정
+    particle.velocity = DirectX::XMFLOAT3
+    (
+        velocity.x + spread * 0.03f,
+        velocity.y,
+        velocity.z
+    );
+
+    // Particle 렌더링 크기 설정
+    particle.size = size;
+    // Particle 생존 시간 설정
+    particle.lifetime = lifetime;
+    // Particle 경과 시간 초기화
+    particle.age = 0.0f;
+    // Particle 색상 설정
+    particle.color = color;
+    // Particle 활성화
+    particle.active = true;
+
+    return true;
 }
 
 void CpuParticleSystem::UpdateParticles(float deltaTime)

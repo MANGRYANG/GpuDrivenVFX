@@ -97,9 +97,9 @@ private:
     struct ParticleEmitter
     {
         // GPU Particle이 생성될 월드 공간 위치
-        DirectX::XMFLOAT3 position = DirectX::XMFLOAT3(0.45f, -0.5f, 0.0f);
+        DirectX::XMFLOAT3 position = DirectX::XMFLOAT3(0.0f, -0.5f, 0.0f);
         // GPU Particle의 초기 이동 속도
-        DirectX::XMFLOAT3 velocity = DirectX::XMFLOAT3(0.0f, 0.35f, 0.0f);
+        DirectX::XMFLOAT3 velocity = DirectX::XMFLOAT3(0.0f, 0.25f, 0.0f);
         // GPU Particle을 Billboard로 렌더링할 때 사용할 크기
         float particleSize = 0.01f;
         // GPU Particle의 총 생존 시간

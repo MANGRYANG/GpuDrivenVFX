@@ -112,7 +112,7 @@ void CS_Main(uint3 dispatchThreadId : SV_DispatchThreadID)
     if (shouldSpawn)
     {
         // 슬롯 인덱스를 사용해 최소한의 수평 퍼짐을 부여
-        float spread = (float) (particleIndex % 5);
+        float spread = (float) (particleIndex % 4) - 2.0f;
 
         particle.position = emitterPosition + float3(spread * 0.03f, 0.0f, 0.0f);
         particle.size = particleSize;

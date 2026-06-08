@@ -42,6 +42,8 @@ struct ParticleEmitter
     float spawnRate = 0.0f;
     // 프레임마다 누적되는 생성 요청 수
     float spawnAccumulator = 0.0f;
+    // 다음에 Particle을 생성할 순환 슬롯 인덱스
+    std::size_t spawnIndex = 0;
     // 생성될 Particle의 색상
     DirectX::XMFLOAT4 particleColor = DirectX::XMFLOAT4(0, 0, 0, 0);
 };
