@@ -103,7 +103,7 @@ void GpuParticleSystem::Update(ID3D11DeviceContext* context, float deltaTime)
     // 다음 프레임의 GPU Particle 생성 시작 슬롯 인덱스 갱신
     if (spawnCount > 0)
     {
-        m_emitter.spawnIndex = static_cast<std::uint32_t>((m_emitter.spawnIndex + spawnCount) % MaxParticleCount);
+        m_emitter.spawnIndex = static_cast<std::uint32_t>((m_emitter.spawnIndex + spawnCount) % ParticleConfig::ParticleCapacity);
     }
 
     // GPU Particle 업데이트 상수 버퍼 갱신
@@ -141,7 +141,7 @@ void GpuParticleSystem::Update(ID3D11DeviceContext* context, float deltaTime)
     static constexpr UINT ThreadGroupSize = 64;
 
     // 전체 Particle 개수를 처리할 thread group 수 계산
-    const UINT threadGroupCount = static_cast<UINT>((MaxParticleCount + ThreadGroupSize - 1) / ThreadGroupSize);
+    const UINT threadGroupCount = static_cast<UINT>((ParticleConfig::ParticleCapacity + ThreadGroupSize - 1) / ThreadGroupSize);
 
     // GPU Compute Shader Dispatch
     context->Dispatch(threadGroupCount, 1, 1);
@@ -198,7 +198,7 @@ ID3D11UnorderedAccessView* GpuParticleSystem::GetParticleUav() const
 
 std::size_t GpuParticleSystem::GetMaxParticleCount() const
 {
-    return MaxParticleCount;
+    return ParticleConfig::ParticleCapacity;
 }
 
 bool GpuParticleSystem::CreateParticleBuffer(ID3D11Device* device)
@@ -211,12 +211,12 @@ bool GpuParticleSystem::CreateParticleBuffer(ID3D11Device* device)
 
     // GPU Particle 목록 설정
     std::vector<GpuParticleData> initialParticles;
-    initialParticles.resize(MaxParticleCount);
+    initialParticles.resize(ParticleConfig::ParticleCapacity);
 
     // GPU Particle Structured Buffer 설명자 구조체
     D3D11_BUFFER_DESC bufferDesc = {};
     // 전체 Particle 데이터의 메모리 크기 설정
-    bufferDesc.ByteWidth = static_cast<UINT>(sizeof(GpuParticleData) * MaxParticleCount);
+    bufferDesc.ByteWidth = static_cast<UINT>(sizeof(GpuParticleData) * ParticleConfig::ParticleCapacity);
     // GPU에서 읽고 쓰는 기본 버퍼로 설정
     bufferDesc.Usage = D3D11_USAGE_DEFAULT;
     // Compute Shader 쓰기와 Shader 읽기 모두 가능하도록 설정
@@ -258,7 +258,7 @@ bool GpuParticleSystem::CreateParticleBuffer(ID3D11Device* device)
     // 첫 번째 원소부터 읽기
     srvDesc.Buffer.FirstElement = 0;
     // 전체 Particle 원소 개수 설정
-    srvDesc.Buffer.NumElements = static_cast<UINT>(MaxParticleCount);
+    srvDesc.Buffer.NumElements = static_cast<UINT>(ParticleConfig::ParticleCapacity);
 
     // Particle Buffer SRV 생성
     hr = device->CreateShaderResourceView
@@ -286,7 +286,7 @@ bool GpuParticleSystem::CreateParticleBuffer(ID3D11Device* device)
     // 첫 번째 원소부터 쓰기
     uavDesc.Buffer.FirstElement = 0;
     // 전체 Particle 원소 개수 설정
-    uavDesc.Buffer.NumElements = static_cast<UINT>(MaxParticleCount);
+    uavDesc.Buffer.NumElements = static_cast<UINT>(ParticleConfig::ParticleCapacity);
     // Append/Counter Buffer는 아직 사용하지 않음
     uavDesc.Buffer.Flags = 0;
 
@@ -406,11 +406,11 @@ bool GpuParticleSystem::CreateAliveIndexBuffer(ID3D11Device* device)
 
     // active Particle 인덱스 목록 초기 데이터
     std::vector<std::uint32_t> initialAliveIndices;
-    initialAliveIndices.resize(MaxParticleCount);
+    initialAliveIndices.resize(ParticleConfig::ParticleCapacity);
 
     // active Particle 인덱스 목록 Structured Buffer 설명자 구조체
     D3D11_BUFFER_DESC bufferDesc = {};
-    bufferDesc.ByteWidth = static_cast<UINT>(sizeof(std::uint32_t) * MaxParticleCount);
+    bufferDesc.ByteWidth = static_cast<UINT>(sizeof(std::uint32_t) * ParticleConfig::ParticleCapacity);
     bufferDesc.Usage = D3D11_USAGE_DEFAULT;
     bufferDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
     bufferDesc.CPUAccessFlags = 0;
@@ -442,7 +442,7 @@ bool GpuParticleSystem::CreateAliveIndexBuffer(ID3D11Device* device)
     srvDesc.Format = DXGI_FORMAT_UNKNOWN;
     srvDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
     srvDesc.Buffer.FirstElement = 0;
-    srvDesc.Buffer.NumElements = static_cast<UINT>(MaxParticleCount);
+    srvDesc.Buffer.NumElements = static_cast<UINT>(ParticleConfig::ParticleCapacity);
 
     // active Particle 인덱스 목록 SRV 생성
     hr = device->CreateShaderResourceView
@@ -465,7 +465,7 @@ bool GpuParticleSystem::CreateAliveIndexBuffer(ID3D11Device* device)
     uavDesc.Format = DXGI_FORMAT_UNKNOWN;
     uavDesc.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
     uavDesc.Buffer.FirstElement = 0;
-    uavDesc.Buffer.NumElements = static_cast<UINT>(MaxParticleCount);
+    uavDesc.Buffer.NumElements = static_cast<UINT>(ParticleConfig::ParticleCapacity);
     uavDesc.Buffer.Flags = 0;
 
     // active Particle 인덱스 목록 UAV 생성
@@ -599,7 +599,7 @@ void GpuParticleSystem::UpdateParticleUpdateBuffer
     bufferData.particleLifetime = m_emitter.particleLifetime;
     bufferData.emitterColor = m_emitter.color;
     bufferData.deltaTime = deltaTime;
-    bufferData.particleCount = static_cast<std::uint32_t>(MaxParticleCount);
+    bufferData.particleCount = static_cast<std::uint32_t>(ParticleConfig::ParticleCapacity);
     bufferData.spawnStartIndex = spawnStartIndex;
     bufferData.spawnCount = spawnCount;
 
@@ -646,9 +646,9 @@ std::uint32_t GpuParticleSystem::ConsumeSpawnCount(float deltaTime)
     m_emitter.spawnAccumulator -= static_cast<float>(spawnCount);
 
     // 한 프레임에서 최대 Particle 수를 초과해 생성하지 않도록 제한
-    if (spawnCount > MaxParticleCount)
+    if (spawnCount > ParticleConfig::ParticleCapacity)
     {
-        return static_cast<std::uint32_t>(MaxParticleCount);
+        return static_cast<std::uint32_t>(ParticleConfig::ParticleCapacity);
     }
 
     return spawnCount;

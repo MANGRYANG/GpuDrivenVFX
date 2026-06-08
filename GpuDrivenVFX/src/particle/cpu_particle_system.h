@@ -4,6 +4,8 @@
 #include <cstddef>
 #include <vector>
 
+#include "particle/particle_config.h"
+
 #include "rendering/billboard.h"
 
 // CPU 기반 연산으로 시뮬레이션할 Particle 데이터 구조체
@@ -89,9 +91,6 @@ private:
     void RebuildBillboards();
 
 private:
-    // 현재 테스트 단계에서 사용할 최대 Particle 개수
-    static constexpr std::size_t MaxParticleCount = 64;
-
     // CPU Particle 생성 상태를 관리하는 Emitter
     ParticleEmitter m_emitter;
 

@@ -9,7 +9,7 @@ void CpuParticleSystem::Initialize()
     m_billboards.clear();
 
     // 테스트 단계에서 사용할 Particle 슬롯 공간 확보
-    m_particles.resize(MaxParticleCount);
+    m_particles.resize(ParticleConfig::ParticleCapacity);
 
     // Emitter 상태 초기화
     m_emitter = ParticleEmitter
@@ -56,7 +56,7 @@ std::size_t CpuParticleSystem::GetDroppedSpawnCount() const
 
 std::size_t CpuParticleSystem::GetMaxParticleCount() const
 {
-    return MaxParticleCount;
+    return ParticleConfig::ParticleCapacity;
 }
 
 bool CpuParticleSystem::SpawnParticle

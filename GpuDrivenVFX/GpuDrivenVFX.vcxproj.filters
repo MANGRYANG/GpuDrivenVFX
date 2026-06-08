@@ -31,6 +31,7 @@
     <ClInclude Include="src\rendering\cpu_billboard_renderer.h" />
     <ClInclude Include="src\particle\gpu_particle_system.h" />
     <ClInclude Include="src\rendering\gpu_billboard_renderer.h" />
+    <ClInclude Include="src\particle\particle_config.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="shaders\VertexShader.hlsl" />

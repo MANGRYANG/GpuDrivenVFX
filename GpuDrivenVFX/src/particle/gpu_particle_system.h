@@ -6,6 +6,8 @@
 #include <d3d11.h>
 #include <wrl/client.h>
 
+#include "particle/particle_config.h"
+
 // GPU 기반 Particle 시뮬레이션에서 사용할 Particle 데이터 구조체
 struct GpuParticleData
 {
@@ -111,9 +113,6 @@ private:
         // GPU Particle을 Billboard로 렌더링할 때 사용할 색상
         DirectX::XMFLOAT4 color = DirectX::XMFLOAT4(0.5f, 0.5f, 1.0f, 1.0f);
     };
-
-    // 현재 테스트 단계에서 사용할 GPU Particle 최대 개수
-    static constexpr std::size_t MaxParticleCount = 64;
 
     // GPU Particle 데이터를 저장할 Structured Buffer
     Microsoft::WRL::ComPtr<ID3D11Buffer> m_particleBuffer;
