@@ -1,24 +1,21 @@
 // GPU Particle 데이터 구조체
 struct GpuParticleData
 {
-    // Particle의 월드 공간 위치
     float3 position;
-    // Particle을 Billboard로 렌더링할 때 사용할 크기
     float size;
 
-    // Particle의 이동 속도
     float3 velocity;
-    // Particle의 총 생존 시간
     float lifetime;
 
-    // Particle을 Billboard로 렌더링할 때 사용할 색상
     float4 color;
 
-    // Particle이 생성된 뒤 경과한 시간
     float age;
-    // 현재 Particle이 활성 상태인지 여부
     uint active;
-    // GPU 구조체 정렬을 맞추기 위한 패딩
+    float orbitRadius;
+    float orbitAngle;
+
+    float angularVelocity;
+    float radialVelocity;
     float2 padding;
 };
 
@@ -37,6 +34,22 @@ cbuffer ParticleUpdateBuffer : register(b0)
     uint particleCount;
     uint spawnStartIndex;
     uint spawnCount;
+
+    uint spawnSequenceStart;
+    uint spiralArmCount;
+    float orbitStartRadius;
+    float orbitAngularVelocity;
+
+    float orbitRadialVelocity;
+    float spiralDepthScale;
+    float spiralDepthFrequency;
+    float padding;
+
+    float4 spiralRight;
+    
+    float4 spiralUp;
+    
+    float4 spiralForward;
 };
 
 // Compute Shader에서 읽고 쓸 GPU Particle Buffer
@@ -47,6 +60,32 @@ RWStructuredBuffer<uint> aliveIndices : register(u1);
 
 // 현재 프레임의 active Particle 개수를 기록할 Buffer
 RWStructuredBuffer<uint> aliveCount : register(u2);
+
+// 2 PI 근사
+static const float TwoPi = 6.28318530718f;
+
+// Spiral Arm을 균등 분배하기 위한 계산기
+float CalculateSpiralArmBaseAngle(uint armIndex)
+{
+    return (float) armIndex * (TwoPi / (float) spiralArmCount);
+}
+
+// 중심 방출형 파티클 평면에 대한 회전을 적용하기 위한 함수
+float3 RotateSpiralPosition(float3 localPosition)
+{
+    return (localPosition.x * spiralRight.xyz) + (localPosition.y * spiralUp.xyz) + (localPosition.z * spiralForward.xyz);
+}
+
+// 중심 방출형 Spiral Particle의 로컬 위치 계산
+float3 CalculateSpiralLocalPosition(float orbitAngle, float orbitRadius, float age)
+{
+    float localX = cos(orbitAngle) * orbitRadius;
+    float localY = sin(orbitAngle) * orbitRadius;
+
+    float zOffset = sin(orbitAngle * spiralDepthFrequency + age * spiralDepthFrequency) * (orbitRadius * spiralDepthScale);
+
+    return RotateSpiralPosition(float3(localX, localY, zOffset));
+}
 
 // 하나의 thread group에서 64개의 Particle 슬롯을 처리
 [numthreads(64, 1, 1)]
@@ -77,16 +116,25 @@ void CS_Main(uint3 dispatchThreadId : SV_DispatchThreadID)
         }
         else
         {
-            // Particle 위치를 속도와 deltaTime 기반으로 갱신
-            particle.position += particle.velocity * deltaTime;
+            // 수명 비율에 따라 바깥쪽 Particle의 회전 속도를 점진적으로 감속
+            float speedFactor = 1.0f - particle.age / particle.lifetime;
+            
+            // 중심 회전형 Particle의 각도와 반지름 갱신
+            particle.orbitAngle += (particle.angularVelocity * speedFactor) * deltaTime;
+            particle.orbitRadius += particle.radialVelocity * deltaTime;
+            
+            // 중심점을 기준으로 회전 좌표를 계산하여 Particle 위치 갱신
+            float3 rotatedPosition = CalculateSpiralLocalPosition(particle.orbitAngle, particle.orbitRadius, particle.age);
+
+            particle.position = emitterPosition + rotatedPosition;
         }
 
         // 갱신된 Particle 데이터를 GPU Buffer에 다시 기록
         particles[particleIndex] = particle;
     }
     
-    // 이번 프레임에 Spawn할 Particle 슬롯인지 확인
     bool shouldSpawn = false;
+    uint spawnOffset = 0;
 
     // Ring Buffer 방식으로 spawnStartIndex부터 spawnCount개 슬롯에 새 Particle 생성
     uint spawnEndIndex = spawnStartIndex + spawnCount;
@@ -97,26 +145,54 @@ void CS_Main(uint3 dispatchThreadId : SV_DispatchThreadID)
         if (spawnEndIndex <= particleCount)
         {
             shouldSpawn = (particleIndex >= spawnStartIndex) && (particleIndex < spawnEndIndex);
+
+            if (shouldSpawn)
+            {
+                spawnOffset = particleIndex - spawnStartIndex;
+            }
         }
-        
+
         // 배열 끝을 넘어서 맨 앞으로 돌아가는 경우
         else
         {
             uint wrappedEndIndex = spawnEndIndex % particleCount;
 
-            shouldSpawn = (particleIndex >= spawnStartIndex) || (particleIndex < wrappedEndIndex);
+            if (particleIndex >= spawnStartIndex)
+            {
+                shouldSpawn = true;
+                spawnOffset = particleIndex - spawnStartIndex;
+            }
+            else if (particleIndex < wrappedEndIndex)
+            {
+                shouldSpawn = true;
+                spawnOffset = (particleCount - spawnStartIndex) + particleIndex;
+            }
         }
     }
 
     // Spawn 대상 슬롯이면 새 Particle 데이터로 덮어쓰기
     if (shouldSpawn)
     {
-        // 슬롯 인덱스를 사용해 최소한의 수평 퍼짐을 부여
-        float spread = (float) (particleIndex % 4) - 2.0f;
+        uint spawnSequence = spawnSequenceStart + spawnOffset;
+        uint armIndex = spawnSequence % spiralArmCount;
 
-        particle.position = emitterPosition + float3(spread * 0.03f, 0.0f, 0.0f);
+        float orbitAngle = CalculateSpiralArmBaseAngle(armIndex);
+
+        particle.orbitRadius = orbitStartRadius;
+        particle.orbitAngle = orbitAngle;
+        particle.angularVelocity = orbitAngularVelocity;
+        particle.radialVelocity = orbitRadialVelocity;
+
+        particle.position = emitterPosition +
+            float3
+            (
+                cos(particle.orbitAngle) * particle.orbitRadius,
+                sin(particle.orbitAngle) * particle.orbitRadius,
+                0.0f
+            );
+
         particle.size = particleSize;
-        particle.velocity = emitterVelocity + float3(spread * 0.03f, 0.0f, 0.0f);
+        particle.velocity = emitterVelocity;
         particle.lifetime = particleLifetime;
         particle.color = emitterColor;
         particle.age = 0.0f;

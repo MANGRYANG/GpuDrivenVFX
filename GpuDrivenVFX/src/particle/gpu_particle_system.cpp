@@ -20,6 +20,22 @@ namespace
         std::uint32_t particleCount;
         std::uint32_t spawnStartIndex;
         std::uint32_t spawnCount;
+
+        std::uint32_t spawnSequenceStart;
+        std::uint32_t spiralArmCount;
+        float orbitStartRadius;
+        float orbitAngularVelocity;
+
+        float orbitRadialVelocity;
+        float spiralDepthScale;
+        float spiralDepthFrequency;
+        float padding;
+
+        DirectX::XMFLOAT4 spiralRight;
+
+        DirectX::XMFLOAT4 spiralUp;
+
+        DirectX::XMFLOAT4 spiralForward;
     };
 
     // GPU Particle 업데이트 상수 버퍼는 16바이트 정렬을 만족해야 함
@@ -36,6 +52,9 @@ bool GpuParticleSystem::Initialize(ID3D11Device* device)
 
         return false;
     }
+
+    // 중심 방출형 Spiral 회전에 사용할 basis 벡터 계산
+    CalculateSpiralBasis();
 
     // GPU Particle Structured Buffer 생성
     if (!CreateParticleBuffer(device))
@@ -100,14 +119,19 @@ void GpuParticleSystem::Update(ID3D11DeviceContext* context, float deltaTime)
     // 이번 프레임의 GPU Particle 생성 시작 슬롯 인덱스 기록
     const std::uint32_t spawnStartIndex = m_emitter.spawnIndex;
 
-    // 다음 프레임의 GPU Particle 생성 시작 슬롯 인덱스 갱신
+    // 이번 프레임의 GPU Particle 생성 시작 순서 기록
+    const std::uint32_t spawnSequenceStart = m_emitter.spawnSequence;
+
+    // 다음 프레임의 GPU Particle 생성 시작 슬롯 인덱스와 생성 순서 갱신
     if (spawnCount > 0)
     {
         m_emitter.spawnIndex = static_cast<std::uint32_t>((m_emitter.spawnIndex + spawnCount) % ParticleConfig::ParticleCapacity);
+
+        m_emitter.spawnSequence += spawnCount;
     }
 
     // GPU Particle 업데이트 상수 버퍼 갱신
-    UpdateParticleUpdateBuffer(context, deltaTime, spawnStartIndex, spawnCount);
+    UpdateParticleUpdateBuffer(context, deltaTime, spawnStartIndex, spawnCount, spawnSequenceStart);
 
     // 이번 프레임 active Particle 개수를 0으로 초기화
     const UINT clearValues[4] = { 0, 0, 0, 0 };
@@ -577,12 +601,36 @@ bool GpuParticleSystem::CreateAliveCountBuffer(ID3D11Device* device)
     return true;
 }
 
+void GpuParticleSystem::CalculateSpiralBasis()
+{
+    // 중심 방출형 파티클에 적용할 회전 행렬
+    const DirectX::XMMATRIX spiralRotationMatrix =
+        DirectX::XMMatrixRotationRollPitchYaw
+        (
+            ParticleConfig::SpiralPitch,
+            ParticleConfig::SpiralYaw,
+            0.0f
+        );
+
+    // 회전 행렬의 첫 번째 행 추출(회전 후 기저의 X축 방향)
+    const DirectX::XMVECTOR spiralRight = DirectX::XMVectorSetW(spiralRotationMatrix.r[0], 0.0f);
+    // 회전 행렬의 첫 번째 행 추출(회전 후 기저의 Y축 방향)
+    const DirectX::XMVECTOR spiralUp = DirectX::XMVectorSetW(spiralRotationMatrix.r[1], 0.0f);
+    // 회전 행렬의 첫 번째 행 추출(회전 후 기저의 Z축 방향)
+    const DirectX::XMVECTOR spiralForward = DirectX::XMVectorSetW(spiralRotationMatrix.r[2], 0.0f);
+
+    DirectX::XMStoreFloat4(&m_spiralRight, spiralRight);
+    DirectX::XMStoreFloat4(&m_spiralUp, spiralUp);
+    DirectX::XMStoreFloat4(&m_spiralForward, spiralForward);
+}
+
 void GpuParticleSystem::UpdateParticleUpdateBuffer
 (
     ID3D11DeviceContext* context,
     float deltaTime,
     std::uint32_t spawnStartIndex,
-    std::uint32_t spawnCount
+    std::uint32_t spawnCount,
+    std::uint32_t spawnSequenceStart
 )
 {
     // 디바이스 컨텍스트나 상수 버퍼가 누락된 경우
@@ -602,6 +650,17 @@ void GpuParticleSystem::UpdateParticleUpdateBuffer
     bufferData.particleCount = static_cast<std::uint32_t>(ParticleConfig::ParticleCapacity);
     bufferData.spawnStartIndex = spawnStartIndex;
     bufferData.spawnCount = spawnCount;
+    bufferData.spawnSequenceStart = spawnSequenceStart;
+    bufferData.spiralArmCount = ParticleConfig::SpiralArmCount;
+    bufferData.orbitStartRadius = ParticleConfig::OrbitStartRadius;
+    bufferData.orbitAngularVelocity = ParticleConfig::OrbitAngularVelocity;
+    bufferData.orbitRadialVelocity = ParticleConfig::OrbitRadialVelocity;
+    bufferData.spiralDepthScale = ParticleConfig::SpiralDepthScale;
+    bufferData.spiralDepthFrequency = ParticleConfig::SpiralDepthFrequency;
+    bufferData.padding = 0.0f;
+    bufferData.spiralRight = m_spiralRight;
+    bufferData.spiralUp = m_spiralUp;
+    bufferData.spiralForward = m_spiralForward;
 
     // CPU 메모리의 상수 버퍼 데이터를 GPU 상수 버퍼에 업데이트
     context->UpdateSubresource

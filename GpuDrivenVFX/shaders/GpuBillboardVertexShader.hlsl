@@ -1,24 +1,21 @@
 // GPU Particle 데이터 구조체
 struct GpuParticleData
 {
-    // Particle의 월드 공간 위치
     float3 position;
-    // Particle을 Billboard로 렌더링할 때 사용할 크기
     float size;
 
-    // Particle의 이동 속도
     float3 velocity;
-    // Particle의 총 생존 시간
     float lifetime;
 
-    // Particle을 Billboard로 렌더링할 때 사용할 색상
     float4 color;
 
-    // Particle이 생성된 뒤 경과한 시간
     float age;
-    // 현재 Particle이 활성 상태인지 여부
     uint active;
-    // GPU 구조체 정렬을 맞추기 위한 패딩
+    float orbitRadius;
+    float orbitAngle;
+
+    float angularVelocity;
+    float radialVelocity;
     float2 padding;
 };
 

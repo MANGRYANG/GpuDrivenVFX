@@ -28,12 +28,21 @@ struct GpuParticleData
     float age = 0.0f;
     // 현재 Particle이 활성 상태인지 여부
     std::uint32_t active = 0;
+    // 중심 회전형 Particle의 현재 반지름
+    float orbitRadius = 0.0f;
+    // 중심 회전형 Particle의 현재 각도
+    float orbitAngle = 0.0f;
+
+    // 중심 회전형 Particle의 각속도
+    float angularVelocity = 0.0f;
+    // 중심에서 바깥쪽으로 퍼지는 속도
+    float radialVelocity = 0.0f;
     // GPU 구조체 정렬을 맞추기 위한 패딩
     DirectX::XMFLOAT2 padding = DirectX::XMFLOAT2(0.0f, 0.0f);
 };
 
 // GPU Particle 데이터는 Structured Buffer stride와 일치해야 함
-static_assert(sizeof(GpuParticleData) == 64, "GpuParticleData size must be 64 bytes.");
+static_assert(sizeof(GpuParticleData) == 80, "GpuParticleData size must be 80 bytes.");
 
 class GpuParticleSystem
 {
@@ -80,13 +89,17 @@ private:
     // Active 상태의 GPU Particle 개수 버퍼를 생성하는 함수
     bool CreateAliveCountBuffer(ID3D11Device* device);
 
+    // 중심 방출형 파티클 평면에 대한 회전 행렬을 계산하는 함수
+    void CalculateSpiralBasis();
+
     // GPU Particle 업데이트 상수 버퍼를 갱신하는 함수
     void UpdateParticleUpdateBuffer
     (
         ID3D11DeviceContext* context,
         float deltaTime,
         std::uint32_t spawnStartIndex,
-        std::uint32_t spawnCount
+        std::uint32_t spawnCount,
+        std::uint32_t spawnSequenceStart
     );
 
     // 이번 프레임에 생성할 GPU Particle 개수를 계산하는 함수
@@ -110,6 +123,8 @@ private:
         float spawnAccumulator = 0.0f;
         // 다음 프레임에 GPU Particle을 생성할 순환 슬롯 인덱스
         std::uint32_t spawnIndex = 0;
+        // Spiral Arm 배치를 계산하기 위한 GPU Particle 생성 순서
+        std::uint32_t spawnSequence = 0;
         // GPU Particle을 Billboard로 렌더링할 때 사용할 색상
         DirectX::XMFLOAT4 color = DirectX::XMFLOAT4(0.5f, 0.5f, 1.0f, 1.0f);
     };
@@ -144,4 +159,11 @@ private:
 
     // GPU Particle Emitter
     ParticleEmitter m_emitter;
+
+    // 중심 방출형 파티클 평면의 로컬 X축을 월드 방향으로 변환한 기저
+    DirectX::XMFLOAT4 m_spiralRight;
+    // 중심 방출형 파티클 평면의 로컬 Y축을 월드 방향으로 변환한 기저
+    DirectX::XMFLOAT4 m_spiralUp;
+    // 중심 방출형 파티클 평면의 로컬 Z축을 월드 방향으로 변환한 기저
+    DirectX::XMFLOAT4 m_spiralForward;
 };
