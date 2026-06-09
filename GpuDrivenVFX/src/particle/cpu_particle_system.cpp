@@ -13,6 +13,36 @@ namespace
     {
         return static_cast<float>(armIndex) * (TwoPi / static_cast<float>(ParticleConfig::SpiralArmCount));
     }
+
+    // 투명도 적용을 위한 계산기
+    float CalculateFadeOutAlpha(float normalizedAge)
+    {
+        // 생존 시간이 기준 이하인 경우 투명도 적용하지 않음
+        if (normalizedAge <= ParticleConfig::ParticleFadeOutStartRatio)
+        {
+            return 1.0f;
+        }
+
+        // 투명도가 적용되는 구간 계산
+        const float fadeDuration = 1.0f - ParticleConfig::ParticleFadeOutStartRatio;
+        // 투명 진행도 계산
+        const float fadeProgress = (normalizedAge - ParticleConfig::ParticleFadeOutStartRatio) / fadeDuration;
+
+        // 최종 알파 값 계산
+        const float alpha = 1.0f - fadeProgress;
+
+        // 0-1 사이의 값으로 클램핑
+        if (alpha < 0.0f)
+        {
+            return 0.0f;
+        }
+        else if (alpha > 1.0f)
+        {
+            return 1.0f;
+        }
+
+        return alpha;
+    }
 }
 
 void CpuParticleSystem::Initialize()
@@ -163,6 +193,11 @@ void CpuParticleSystem::UpdateParticles(float deltaTime)
             particle.active = false;
             continue;
         }
+
+        // 수명이 끝나갈수록 Particle을 투명하게 처리
+        const float normalizedAge = particle.age / particle.lifetime;
+        const float fadeAlpha = CalculateFadeOutAlpha(normalizedAge);
+        particle.color.w = m_emitter.particleColor.w * fadeAlpha;
 
         // 중심 방출형 Particle의 각도와 반지름 갱신
         float speedFactor = 1.0f - (particle.age / particle.lifetime);

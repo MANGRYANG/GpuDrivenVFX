@@ -38,6 +38,12 @@ private:
     // Billboard 렌더링에 사용할 카메라 변환 상수 버퍼를 생성하는 함수
     bool CreateCameraBuffer(ID3D11Device* device);
 
+    // Billboard 투명도 표현에 사용할 Blend State를 생성하는 함수
+    bool CreateAlphaBlendState(ID3D11Device* device);
+
+    // Billboard의 깊이 버퍼 쓰기 설정을 끄기 위한 Depth Stencil State를 생성하는 함수
+    bool CreateDepthStencilState(ID3D11Device* device);
+
     // 현재 Billboard 개수를 담을 수 있는 인스턴스 버퍼를 확보하는 함수
     bool EnsureInstanceBuffer(ID3D11DeviceContext* context, std::size_t instanceCount);
 
@@ -61,6 +67,10 @@ private:
     Microsoft::WRL::ComPtr<ID3D11InputLayout> m_inputLayout;
     // Billboard 렌더링에 사용할 view/projection 상수 버퍼
     Microsoft::WRL::ComPtr<ID3D11Buffer> m_cameraBuffer;
+    // Billboard 투명도 표현에 사용할 Blend State 객체
+    Microsoft::WRL::ComPtr<ID3D11BlendState> m_alphaBlendState;
+    // Billboard 깊이 버퍼 쓰기 설정을 끄기 위한 Depth Stencil State 객체
+    Microsoft::WRL::ComPtr<ID3D11DepthStencilState> m_noDepthWriteState;
 
     // Quad 정점 한 개가 차지하는 바이트 크기
     UINT m_vertexStride = 0;
