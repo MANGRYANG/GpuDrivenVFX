@@ -7,17 +7,6 @@
 
 namespace
 {
-    // 변환 버퍼 데이터 구조체
-    struct TransformBufferData
-    {
-        DirectX::XMFLOAT4X4 world;
-        DirectX::XMFLOAT4X4 view;
-        DirectX::XMFLOAT4X4 projection;
-    };
-
-    // 변환 버퍼는 상수 버퍼로 생성되므로, 16바이트 정렬 확인
-    static_assert(sizeof(TransformBufferData) % 16 == 0, "Constant buffer size must be 16-byte aligned.(TransformBuffer)");
-
     // 두 시점 사이의 경과 시간을 Milliseconds 단위로 계산하는 내부 헬퍼
     double CalculateElapsedMilliseconds
     (
@@ -50,13 +39,6 @@ bool App::Initialize(HINSTANCE hInstance, int nCmdShow)
         return false;
     }
 
-    // 셰이더 컴파일
-    if (!m_shader.Initialize(m_renderer.GetDevice(), L"shaders/VertexShader.hlsl", L"shaders/PixelShader.hlsl"))
-    {
-        // 컴파일하지 못한 경우 실패 처리
-        return false;
-    }
-
     // 렌더링 화면의 세로 픽셀 크기
     const int renderHeight = m_renderer.GetHeight();
 
@@ -81,52 +63,6 @@ bool App::Initialize(HINSTANCE hInstance, int nCmdShow)
         0.1f,                   // 근평면
         100.0f                  // 원평면
     );
-
-    // 사각형을 구성할 정점 데이터를 담은 배열
-    const std::vector<Vertex> quadVertices =
-    {
-        {
-            DirectX::XMFLOAT3(-0.5f, 0.5f, 0.0f),
-            DirectX::XMFLOAT3(0.0f, 0.0f, -1.0f),
-            DirectX::XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f)
-        },
-        {
-            DirectX::XMFLOAT3(0.5f, 0.5f, 0.0f),
-            DirectX::XMFLOAT3(0.0f, 0.0f, -1.0f),
-            DirectX::XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f)
-        },
-        {
-            DirectX::XMFLOAT3(-0.5f, -0.5f, 0.0f),
-            DirectX::XMFLOAT3(0.0f, 0.0f, -1.0f),
-            DirectX::XMFLOAT4(0.0f, 0.3f, 1.0f, 1.0f)
-        },
-        {
-            DirectX::XMFLOAT3(0.5f, -0.5f, 0.0f),
-            DirectX::XMFLOAT3(0.0f, 0.0f, -1.0f),
-            DirectX::XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f)
-        }
-    };
-
-    // 정점 인덱스 데이터
-    const std::vector<uint32_t> quadIndices =
-    {
-        0, 1, 2,
-        1, 3, 2
-    };
-
-    // 메쉬 정점 리소스 초기화
-    if (!m_quadMesh.Initialize(m_renderer.GetDevice(), m_shader.GetVertexShaderBlob(), quadVertices, quadIndices))
-    {
-        // 초기화하지 못한 경우 실패 처리
-        return false;
-    }
-
-    // Vertex Shader에 전달할 변환 버퍼 생성
-    if (!CreateTransformBuffer())
-    {
-        // 변환 버퍼를 생성하지 못한 경우 실패 처리
-        return false;
-    }
 
     // CPU Particle System 초기화
     m_cpuParticleSystem.Initialize();
@@ -198,126 +134,6 @@ int App::Run()
     }
 
     return 0;
-}
-
-bool App::CreateTransformBuffer()
-{
-    // 변환 버퍼 설명자 구조체 
-    D3D11_BUFFER_DESC bufferDesc = {};
-    // 버퍼를 구성할 데이터 배열의 메모리 크기 설정
-    bufferDesc.ByteWidth = sizeof(TransformBufferData);
-    // 버퍼의 사용 방식을 생성 후 읽기 및 쓰기 가능으로 설정
-    bufferDesc.Usage = D3D11_USAGE_DEFAULT;
-    // 버퍼의 사용 용도를 파이프라인의 상수 버퍼로 지정
-    bufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-    // CPU가 버퍼에 직접 엑세스할 수 없도록 설정
-    bufferDesc.CPUAccessFlags = 0;
-    // 기타 특수 기능 사용하지 않음
-    bufferDesc.MiscFlags = 0;
-    // Structured Buffer가 아니므로 기본값으로 설정
-    bufferDesc.StructureByteStride = 0;
-
-    // 변환 버퍼 생성
-    HRESULT hr = m_renderer.GetDevice()->CreateBuffer
-    (
-        &bufferDesc,
-        nullptr,
-        m_transformBuffer.GetAddressOf()
-    );
-
-    // 버퍼 생성에 실패한 경우
-    if (FAILED(hr))
-    {
-        // 메시지 박스 플로팅
-        MessageBoxW(nullptr, L"Failed to create transform constant buffer.", L"App Error", MB_OK | MB_ICONERROR);
-
-        return false;
-    }
-
-    return true;
-}
-
-DirectX::XMMATRIX App::BuildQuadWorldMatrix() const
-{
-    // 스케일 행렬 생성
-    const DirectX::XMMATRIX scale = DirectX::XMMatrixScaling
-    (
-        m_quadScale,
-        m_quadScale,
-        m_quadScale
-    );
-
-    // 회전 행렬 생성
-    const DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationRollPitchYaw
-    (
-        m_quadRotation.x,
-        m_quadRotation.y,
-        m_quadRotation.z
-    );
-
-    // 이동 행렬 생성
-    const DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation
-    (
-        m_quadPosition.x,
-        m_quadPosition.y,
-        m_quadPosition.z
-    );
-
-    // 변환 행렬 계산 (SRT)
-    return scale * rotation * translation;
-}
-
-void App::UpdateTransformBuffer(ID3D11DeviceContext* context)
-{
-    // 디바이스 컨텍스트나 변환 버퍼가 누락된 경우 실패 처리
-    if (!context || !m_transformBuffer.Get())
-    {
-        return;
-    }
-
-    // 월드 변환 행렬
-    const DirectX::XMMATRIX world = BuildQuadWorldMatrix();
-
-    // 뷰 변환 행렬
-    const DirectX::XMMATRIX view = m_camera.GetViewMatrix();
-
-    // 투영 변환 행렬
-    const DirectX::XMMATRIX projection = m_camera.GetProjectionMatrix();
-
-    // 변환 버퍼 데이터 설정
-    TransformBufferData transformData = {};
-    // XMMATRIX 형식의 월드 변환 행렬을 전치한 뒤 XMFLOAT4X4 형식으로 전환하여 변환 버퍼 데이터 구조체에 전달
-    DirectX::XMStoreFloat4x4(&transformData.world, DirectX::XMMatrixTranspose(world));
-    // XMMATRIX 형식의 뷰 변환 행렬을 전치한 뒤 XMFLOAT4X4 형식으로 전환하여 변환 버퍼 데이터 구조체에 전달
-    DirectX::XMStoreFloat4x4(&transformData.view, DirectX::XMMatrixTranspose(view));
-    // XMMATRIX 형식의 투영 변환 행렬을 전치한 뒤 XMFLOAT4X4 형식으로 전환하여 변환 버퍼 데이터 구조체에 전달
-    DirectX::XMStoreFloat4x4(&transformData.projection, DirectX::XMMatrixTranspose(projection));
-
-    // CPU 메모리의 변환 버퍼 데이터를 GPU의 변환 버퍼에 업데이트
-    context->UpdateSubresource
-    (
-        m_transformBuffer.Get(),    // 업데이트 대상 리소스 (변환 버퍼)
-        0,                          // 하위 리소스 인덱스 (변환 버퍼는 단일 리소스이므로 0)
-        nullptr,                    // 업데이트할 영역 지정 (버퍼 전체 영역)
-        &transformData,             // 메모리의 원본 데이터 (변환 버퍼 데이터)
-        0,                          // 텍스처 데이터가 아니므로 의미 없음
-        0                           // 텍스처 데이터가 아니므로 의미 없음
-    );
-
-    // 파이프라인 입력 슬롯에 전달할 상수 버퍼 포인터 배열
-    ID3D11Buffer* constantBuffers[] =
-    {
-        // 0번 슬롯에 할당할 상수 버퍼 (변환 버퍼)
-        m_transformBuffer.Get()
-    };
-
-    // 정점 셰이더 단계의 상수 버퍼 설정
-    context->VSSetConstantBuffers
-    (
-        0,                  // 버퍼를 바인딩할 입력 슬롯 번호
-        1,                  // 설정할 버퍼의 개수
-        constantBuffers     // 상수 버퍼 포인터들이 담긴 배열
-    );
 }
 
 void App::ProcessParticleSimulationModeInput()

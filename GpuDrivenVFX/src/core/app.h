@@ -9,11 +9,9 @@
 #include "platform/window.h"
 
 #include "rendering/renderer.h"
-#include "rendering/shader.h"
 #include "rendering/cpu_billboard_renderer.h"
 #include "rendering/gpu_billboard_renderer.h"
 
-#include "graphics/mesh.h"
 #include "graphics/camera.h"
 
 #include "particle/cpu_particle_system.h"
@@ -52,13 +50,6 @@ public:
     int Run();
 
 private:
-    // 정점 셰이더에 전달할 변환 버퍼를 생성하는 함수
-    bool CreateTransformBuffer();
-    // Quad의 위치, 회전, 스케일 정보를 기반으로 월드 변환 행렬을 생성하는 함수
-    DirectX::XMMATRIX BuildQuadWorldMatrix() const;
-    // 현재 프레임에서 사용할 변환 행렬을 GPU에 전달하는 함수
-    void UpdateTransformBuffer(ID3D11DeviceContext* context);
-
     // 시뮬레이션 모드 전환 입력을 처리하는 함수
     void ProcessParticleSimulationModeInput();
 
@@ -74,12 +65,8 @@ private:
     FrameTimer m_frameTimer;
     // 애플리케이션이 관리하는 렌더러
     Renderer m_renderer;
-    // 애플리케이션이 관리하는 셰이더
-    Shader m_shader;
     // 애플리케이션이 관리하는 카메라
     Camera m_camera;
-    // 인덱스 버퍼 기반 사각형 렌더링을 검증하기 위한 임시 Quad 메쉬
-    Mesh m_quadMesh;
 
     // CPU 기반 Particle 데이터를 관리하는 시스템
     CpuParticleSystem m_cpuParticleSystem;
@@ -90,16 +77,6 @@ private:
     CpuBillboardRenderer m_cpuBillboardRenderer;
     // GPU 기반 Particle을 렌더링하기 위한 Billboard 렌더러
     GpuBillboardRenderer m_gpuBillboardRenderer;
-
-    // 월드 좌표계에서의 Quad 위치 정보
-    DirectX::XMFLOAT3 m_quadPosition = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
-    // 월드 좌표계에서의 Quad 회전 정보
-    DirectX::XMFLOAT3 m_quadRotation = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
-    // 월드 좌표계에서의 Quad 크기 배율
-    float m_quadScale = 1.0f;
-
-    // 정점 셰이더에 전달할 변환 버퍼
-    Microsoft::WRL::ComPtr<ID3D11Buffer> m_transformBuffer;
 
     // 애플리케이션 종료 조건 제어용 변수
     bool m_running = true;
