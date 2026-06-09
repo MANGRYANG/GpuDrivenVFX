@@ -1,6 +1,20 @@
 #include "pch.h"
 #include "cpu_particle_system.h"
 
+#include <cmath>
+
+namespace
+{
+    // 2 PI 근사
+    constexpr float TwoPi = 6.28318530718f;
+
+    // Spiral Arm을 균등 분배하기 위한 계산기
+    float CalculateSpiralArmBaseAngle(std::uint32_t armIndex)
+    {
+        return static_cast<float>(armIndex) * (TwoPi / static_cast<float>(ParticleConfig::SpiralArmCount));
+    }
+}
+
 void CpuParticleSystem::Initialize()
 {
     // 기존 Particle 데이터 초기화
@@ -23,6 +37,7 @@ void CpuParticleSystem::Initialize()
         ParticleConfig::SpawnRate,                  // 초당 생성해야 하는 Particle 개수
         0.0f,                                       // 프레임마다 누적되는 생성 요청 수
         0,                                          // 다음에 Particle을 생성할 순환 슬롯 인덱스
+        0,                                          // Spiral Arm 배치를 계산하기 위한 Particle 생성 순서
         DirectX::XMFLOAT4(1.0f, 0.65f, 0.1f, 1.0f)  // Particle 색상
     };
 
@@ -85,25 +100,29 @@ bool CpuParticleSystem::SpawnParticle
     // 다음 생성 슬롯을 순환 방식으로 갱신
     m_emitter.spawnIndex = (m_emitter.spawnIndex + 1) % m_particles.size();
 
-    // 슬롯 인덱스를 사용해 수평 퍼짐을 부여
-    const float spread = static_cast<float>(particleIndex % 4) - 2.0f;
+    // 중심 방출형 Particle 데이터 설정
+    particle.orbitRadius = ParticleConfig::OrbitStartRadius;
+    particle.angularVelocity = ParticleConfig::OrbitAngularVelocity;
+    particle.radialVelocity = ParticleConfig::OrbitRadialVelocity;
 
-    // Particle 위치 설정
+    // 생성 순서를 기반으로 Spiral Arm 선택
+    const std::uint32_t spawnSequence = (m_emitter.spawnSequence)++;
+    const std::uint32_t armIndex = spawnSequence % ParticleConfig::SpiralArmCount;
+
+    // 각 Arm의 시작 각도 계산
+    const float orbitAngle = CalculateSpiralArmBaseAngle(armIndex);
+    particle.orbitAngle = orbitAngle;
+
+    // Particle 초기 위치 설정
     particle.position = DirectX::XMFLOAT3
     (
-        position.x + spread * 0.03f,
-        position.y,
+        position.x + std::cos(particle.orbitAngle) * particle.orbitRadius,
+        position.y + std::sin(particle.orbitAngle) * particle.orbitRadius,
         position.z
     );
 
     // Particle 속도 설정
-    particle.velocity = DirectX::XMFLOAT3
-    (
-        velocity.x + spread * 0.03f,
-        velocity.y,
-        velocity.z
-    );
-
+    particle.velocity = velocity;
     // Particle 렌더링 크기 설정
     particle.size = size;
     // Particle 생존 시간 설정
@@ -120,6 +139,13 @@ bool CpuParticleSystem::SpawnParticle
 
 void CpuParticleSystem::UpdateParticles(float deltaTime)
 {
+    // 중심 방출형 Particle의 회전 반경 설정
+    const float pitch = ParticleConfig::SpiralPitch;
+    const float yaw = ParticleConfig::SpiralYaw;
+
+    // 중심 방출형 Particle의 회전 행렬 설정
+    DirectX::XMMATRIX rotationMatrix = DirectX::XMMatrixRotationRollPitchYaw(pitch, yaw, 0.0f);
+
     // 활성 Particle의 수명 및 위치 갱신
     for (Particle& particle : m_particles)
     {
@@ -138,10 +164,30 @@ void CpuParticleSystem::UpdateParticles(float deltaTime)
             continue;
         }
 
-        // 활성 Particle의 위치를 속도와 deltaTime 기반으로 갱신
-        particle.position.x += particle.velocity.x * deltaTime;
-        particle.position.y += particle.velocity.y * deltaTime;
-        particle.position.z += particle.velocity.z * deltaTime;
+        // 중심 방출형 Particle의 각도와 반지름 갱신
+        float speedFactor = 1.0f - (particle.age / particle.lifetime);
+        particle.orbitAngle += (particle.angularVelocity * speedFactor) * deltaTime;
+        particle.orbitRadius += particle.radialVelocity * deltaTime;
+
+        // 중심 방출형 Particle의 평면 상 XY 좌표 계산
+        float localX = std::cos(particle.orbitAngle) * particle.orbitRadius;
+        float localY = std::sin(particle.orbitAngle) * particle.orbitRadius;
+
+        // 중심 방출형 Particle의 입체감 부여를 위한 zOffset 적용
+        const float zOffset = 
+            std::sin(particle.orbitAngle * ParticleConfig::SpiralDepthFrequency + particle.age * ParticleConfig::SpiralDepthFrequency)
+                * (particle.orbitRadius * ParticleConfig::SpiralDepthScale);
+
+        // 중심 방출형 Particle의 로컬 위치 계산
+        DirectX::XMVECTOR localPos = DirectX::XMVectorSet(localX, localY, zOffset, 0.0f);
+
+        // 회전 행렬곱 수행
+        DirectX::XMVECTOR rotatedPos = DirectX::XMVector3TransformNormal(localPos, rotationMatrix);
+
+        // 최종 Particle 위치 계산
+        particle.position.x = m_emitter.position.x + DirectX::XMVectorGetX(rotatedPos);
+        particle.position.y = m_emitter.position.y + DirectX::XMVectorGetY(rotatedPos);
+        particle.position.z = m_emitter.position.z + DirectX::XMVectorGetZ(rotatedPos);
     }
 }
 

@@ -2,6 +2,7 @@
 
 #include <DirectXMath.h>
 #include <cstddef>
+#include <cstdint>
 #include <vector>
 
 #include "particle/particle_config.h"
@@ -21,6 +22,14 @@ struct Particle
     float lifetime = 0.0;
     // Particle이 생성된 뒤 경과한 시간
     float age = 0.0;
+    // 중심 회전형 Particle의 현재 반지름
+    float orbitRadius = 0.0f;
+    // 중심 회전형 Particle의 현재 각도
+    float orbitAngle = 0.0f;
+    // 중심 회전형 Particle의 각속도
+    float angularVelocity = 0.0f;
+    // 중심에서 바깥쪽으로 퍼지는 속도
+    float radialVelocity = 0.0f;
     // Particle을 Billboard로 렌더링할 때 사용할 색상
     DirectX::XMFLOAT4 color = DirectX::XMFLOAT4(0, 0, 0, 0);
     // 현재 Particle이 활성 상태인지 여부
@@ -44,6 +53,8 @@ struct ParticleEmitter
     float spawnAccumulator = 0.0f;
     // 다음에 Particle을 생성할 순환 슬롯 인덱스
     std::size_t spawnIndex = 0;
+    // Spiral Arm 배치를 계산하기 위한 Particle 생성 순서
+    std::uint32_t spawnSequence = 0;
     // 생성될 Particle의 색상
     DirectX::XMFLOAT4 particleColor = DirectX::XMFLOAT4(0, 0, 0, 0);
 };
