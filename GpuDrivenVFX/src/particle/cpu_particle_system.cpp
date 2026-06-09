@@ -41,7 +41,8 @@ namespace
             return 1.0f;
         }
 
-        return alpha;
+        // Alpha 값의 제곱을 반환
+        return alpha * alpha;
     }
 }
 
@@ -68,6 +69,7 @@ void CpuParticleSystem::Initialize()
         0.0f,                                       // 프레임마다 누적되는 생성 요청 수
         0,                                          // 다음에 Particle을 생성할 순환 슬롯 인덱스
         0,                                          // Spiral Arm 배치를 계산하기 위한 Particle 생성 순서
+        0.0f,                                       // Spiral Particle 방출 평면의 현재 회전 각도
         DirectX::XMFLOAT4(1.0f, 0.65f, 0.1f, 1.0f)  // Particle 색상
     };
 
@@ -77,6 +79,9 @@ void CpuParticleSystem::Initialize()
 
 void CpuParticleSystem::Update(float deltaTime)
 {
+    // Spiral Particle 방출 평면의 회전 각도 갱신
+    UpdateEmitterPlaneRotation(deltaTime);
+
     // 활성 Particle의 수명 및 위치 갱신
     UpdateParticles(deltaTime);
 
@@ -143,12 +148,30 @@ bool CpuParticleSystem::SpawnParticle
     const float orbitAngle = CalculateSpiralArmBaseAngle(armIndex);
     particle.orbitAngle = orbitAngle;
 
+    const DirectX::XMMATRIX rotationMatrix =
+        DirectX::XMMatrixRotationRollPitchYaw
+        (
+            ParticleConfig::SpiralPitch,
+            ParticleConfig::SpiralYaw,
+            m_emitter.planeRotationAngle
+        );
+
+    const DirectX::XMVECTOR localPos = DirectX::XMVectorSet
+    (
+        std::cos(particle.orbitAngle) * particle.orbitRadius,
+        std::sin(particle.orbitAngle) * particle.orbitRadius,
+        0.0f,
+        0.0f
+    );
+
+    const DirectX::XMVECTOR rotatedPos = DirectX::XMVector3TransformNormal(localPos, rotationMatrix);
+
     // Particle 초기 위치 설정
     particle.position = DirectX::XMFLOAT3
     (
-        position.x + std::cos(particle.orbitAngle) * particle.orbitRadius,
-        position.y + std::sin(particle.orbitAngle) * particle.orbitRadius,
-        position.z
+        position.x + DirectX::XMVectorGetX(rotatedPos),
+        position.y + DirectX::XMVectorGetY(rotatedPos),
+        position.z + DirectX::XMVectorGetZ(rotatedPos)
     );
 
     // Particle 속도 설정
@@ -173,8 +196,8 @@ void CpuParticleSystem::UpdateParticles(float deltaTime)
     const float pitch = ParticleConfig::SpiralPitch;
     const float yaw = ParticleConfig::SpiralYaw;
 
-    // 중심 방출형 Particle의 회전 행렬 설정
-    DirectX::XMMATRIX rotationMatrix = DirectX::XMMatrixRotationRollPitchYaw(pitch, yaw, 0.0f);
+    // 기본 기울기와 시간 기반 평면 회전을 조합한 회전 행렬 생성
+    DirectX::XMMATRIX rotationMatrix = DirectX::XMMatrixRotationRollPitchYaw(pitch, yaw, m_emitter.planeRotationAngle);
 
     // 활성 Particle의 수명 및 위치 갱신
     for (Particle& particle : m_particles)
@@ -223,6 +246,18 @@ void CpuParticleSystem::UpdateParticles(float deltaTime)
         particle.position.x = m_emitter.position.x + DirectX::XMVectorGetX(rotatedPos);
         particle.position.y = m_emitter.position.y + DirectX::XMVectorGetY(rotatedPos);
         particle.position.z = m_emitter.position.z + DirectX::XMVectorGetZ(rotatedPos);
+    }
+}
+
+void CpuParticleSystem::UpdateEmitterPlaneRotation(float deltaTime)
+{
+    // Spiral Particle 방출 평면을 시간에 따라 회전
+    m_emitter.planeRotationAngle += ParticleConfig::SpiralPlaneRotationSpeed * deltaTime;
+
+    // 각도가 너무 커지는 것을 방지
+    if (m_emitter.planeRotationAngle > DirectX::XM_2PI)
+    {
+        m_emitter.planeRotationAngle -= DirectX::XM_2PI;
     }
 }
 

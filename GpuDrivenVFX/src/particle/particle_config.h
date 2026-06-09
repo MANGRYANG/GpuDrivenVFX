@@ -42,6 +42,9 @@ namespace ParticleConfig
     // Spiral Particle 평면에 입체감을 주기 위한 yaw 회전값
     constexpr float SpiralYaw = 1.0f;
 
+    // Spiral Particle 평면이 회전하는 속도
+    constexpr float SpiralPlaneRotationSpeed = 0.2f;
+
     // Spiral Particle의 Z축 흔들림 강도
     constexpr float SpiralDepthScale = 0.1f;
 
@@ -49,5 +52,5 @@ namespace ParticleConfig
     constexpr float SpiralDepthFrequency = 2.0f;
 
     // Particle 수명 중 fade-out이 시작되는 비율
-    constexpr float ParticleFadeOutStartRatio = 0.35f;
+    constexpr float ParticleFadeOutStartRatio = 0.0f;
 }

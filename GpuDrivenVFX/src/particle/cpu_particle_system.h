@@ -55,6 +55,8 @@ struct ParticleEmitter
     std::size_t spawnIndex = 0;
     // Spiral Arm 배치를 계산하기 위한 Particle 생성 순서
     std::uint32_t spawnSequence = 0;
+    // Spiral Particle 방출 평면의 현재 회전 각도
+    float planeRotationAngle = 0.0f;
     // 생성될 Particle의 색상
     DirectX::XMFLOAT4 particleColor = DirectX::XMFLOAT4(0, 0, 0, 0);
 };
@@ -96,6 +98,9 @@ private:
 
     // 활성 상태의 Particle 수명 및 위치를 갱신하는 함수
     void UpdateParticles(float deltaTime);
+
+    // Spiral Particle 방출 평면의 회전 각도를 갱신하는 함수
+    void UpdateEmitterPlaneRotation(float deltaTime);
 
     // Emitter의 누적 생성 요청을 처리하는 함수
     void EmitParticles(float deltaTime);

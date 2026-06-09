@@ -102,7 +102,10 @@ float CalculateFadeOutAlpha(float normalizedAge)
     float fadeProgress = (normalizedAge - fadeOutStartRatio) / fadeDuration;
 
     // 최종 알파 값 계산 (0-1 구간으로 클램핑)
-    return saturate(1.0f - fadeProgress);
+    float alpha = saturate(1.0f - fadeProgress);
+    
+    // Alpha 값의 제곱 반환
+    return alpha * alpha;
 }
 
 // 하나의 thread group에서 64개의 Particle 슬롯을 처리

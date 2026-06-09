@@ -54,7 +54,7 @@ bool GpuParticleSystem::Initialize(ID3D11Device* device)
     }
 
     // 중심 방출형 Spiral 회전에 사용할 basis 벡터 계산
-    CalculateSpiralBasis();
+    CalculateSpiralBasis(m_emitter.planeRotationAngle);
 
     // GPU Particle Structured Buffer 생성
     if (!CreateParticleBuffer(device))
@@ -129,6 +129,12 @@ void GpuParticleSystem::Update(ID3D11DeviceContext* context, float deltaTime)
 
         m_emitter.spawnSequence += spawnCount;
     }
+
+    // Emitter의 방출 평면 회전 각도 갱신
+    UpdateEmitterPlaneRotation(deltaTime);
+
+    // 갱신된 회전 각도를 기준으로 Spiral basis 벡터 재계산
+    CalculateSpiralBasis(m_emitter.planeRotationAngle);
 
     // GPU Particle 업데이트 상수 버퍼 갱신
     UpdateParticleUpdateBuffer(context, deltaTime, spawnStartIndex, spawnCount, spawnSequenceStart);
@@ -601,7 +607,7 @@ bool GpuParticleSystem::CreateAliveCountBuffer(ID3D11Device* device)
     return true;
 }
 
-void GpuParticleSystem::CalculateSpiralBasis()
+void GpuParticleSystem::CalculateSpiralBasis(float planeRotationAngle)
 {
     // 중심 방출형 파티클에 적용할 회전 행렬
     const DirectX::XMMATRIX spiralRotationMatrix =
@@ -609,7 +615,7 @@ void GpuParticleSystem::CalculateSpiralBasis()
         (
             ParticleConfig::SpiralPitch,
             ParticleConfig::SpiralYaw,
-            0.0f
+            planeRotationAngle
         );
 
     // 회전 행렬의 첫 번째 행 추출(회전 후 기저의 X축 방향)
@@ -622,6 +628,19 @@ void GpuParticleSystem::CalculateSpiralBasis()
     DirectX::XMStoreFloat4(&m_spiralRight, spiralRight);
     DirectX::XMStoreFloat4(&m_spiralUp, spiralUp);
     DirectX::XMStoreFloat4(&m_spiralForward, spiralForward);
+}
+
+void GpuParticleSystem::UpdateEmitterPlaneRotation(float deltaTime)
+{
+    // Spiral Particle 방출 평면을 시간에 따라 회전
+    m_emitter.planeRotationAngle +=
+        ParticleConfig::SpiralPlaneRotationSpeed * deltaTime;
+
+    // 각도가 너무 커지는 것을 방지
+    if (m_emitter.planeRotationAngle > DirectX::XM_2PI)
+    {
+        m_emitter.planeRotationAngle -= DirectX::XM_2PI;
+    }
 }
 
 void GpuParticleSystem::UpdateParticleUpdateBuffer
