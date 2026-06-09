@@ -43,7 +43,7 @@ cbuffer ParticleUpdateBuffer : register(b0)
     float orbitRadialVelocity;
     float spiralDepthScale;
     float spiralDepthFrequency;
-    float padding;
+    float fadeOutStartRatio;
 
     float4 spiralRight;
     
@@ -87,6 +87,24 @@ float3 CalculateSpiralLocalPosition(float orbitAngle, float orbitRadius, float a
     return RotateSpiralPosition(float3(localX, localY, zOffset));
 }
 
+// fade-out 효과를 위한 알파 값 계산 함수
+float CalculateFadeOutAlpha(float normalizedAge)
+{
+    // 생존 시간이 기준 이하인 경우 투명도 적용하지 않음
+    if (normalizedAge <= fadeOutStartRatio)
+    {
+        return 1.0f;
+    }
+
+    // 투명도가 적용되는 구간 계산
+    float fadeDuration = 1.0f - fadeOutStartRatio;
+    // 투명 진행도 계산
+    float fadeProgress = (normalizedAge - fadeOutStartRatio) / fadeDuration;
+
+    // 최종 알파 값 계산 (0-1 구간으로 클램핑)
+    return saturate(1.0f - fadeProgress);
+}
+
 // 하나의 thread group에서 64개의 Particle 슬롯을 처리
 [numthreads(64, 1, 1)]
 void CS_Main(uint3 dispatchThreadId : SV_DispatchThreadID)
@@ -116,8 +134,11 @@ void CS_Main(uint3 dispatchThreadId : SV_DispatchThreadID)
         }
         else
         {
+            // 수명 비율 계산
+            float normalizedAge = particle.age / particle.lifetime;
+            
             // 수명 비율에 따라 바깥쪽 Particle의 회전 속도를 점진적으로 감속
-            float speedFactor = 1.0f - particle.age / particle.lifetime;
+            float speedFactor = 1.0f - normalizedAge;
             
             // 중심 회전형 Particle의 각도와 반지름 갱신
             particle.orbitAngle += (particle.angularVelocity * speedFactor) * deltaTime;
@@ -127,6 +148,11 @@ void CS_Main(uint3 dispatchThreadId : SV_DispatchThreadID)
             float3 rotatedPosition = CalculateSpiralLocalPosition(particle.orbitAngle, particle.orbitRadius, particle.age);
 
             particle.position = emitterPosition + rotatedPosition;
+            
+            // 파티클에 적용할 알파 값 계산
+            float fadeAlpha = CalculateFadeOutAlpha(normalizedAge);
+            // 계산된 알파 값 적용
+            particle.color.a = emitterColor.a * fadeAlpha;
         }
 
         // 갱신된 Particle 데이터를 GPU Buffer에 다시 기록

@@ -73,6 +73,20 @@ bool GpuBillboardRenderer::Initialize(ID3D11Device* device)
         return false;
     }
 
+    // Billboard 투명도 표현에 사용할 Blend State 객체 생성
+    if (!CreateAlphaBlendState(device))
+    {
+        // 생성하지 못한 경우 실패 처리
+        return false;
+    }
+
+    // Billboard의 깊이 버퍼 쓰기 설정을 끄기 위한 Depth Stencil State 객체 생성
+    if (!CreateDepthStencilState(device))
+    {
+        // 생성하지 못한 경우 실패 처리
+        return false;
+    }
+
     return true;
 }
 
@@ -379,6 +393,78 @@ bool GpuBillboardRenderer::CreateIndirectArgsComputeShader(ID3D11Device* device)
     return true;
 }
 
+bool GpuBillboardRenderer::CreateAlphaBlendState(ID3D11Device* device)
+{
+    // 디바이스가 누락된 경우
+    if (!device)
+    {
+        // 메시지 박스 플로팅
+        MessageBoxW(nullptr, L"Invalid device.", L"GpuBillboardRenderer Error", MB_OK | MB_ICONERROR);
+
+        return false;
+    }
+
+    // Alpha blending 설정
+    D3D11_BLEND_DESC blendDesc = {};
+    blendDesc.AlphaToCoverageEnable = FALSE;
+    blendDesc.IndependentBlendEnable = FALSE;
+
+    blendDesc.RenderTarget[0].BlendEnable = TRUE;
+    blendDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+    blendDesc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+    blendDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+
+    blendDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+    blendDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
+    blendDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+
+    blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+
+    // Blend State 객체 생성
+    HRESULT hr = device->CreateBlendState
+    (
+        &blendDesc,
+        m_alphaBlendState.GetAddressOf()
+    );
+
+    // Blend State 객체 생성에 실패한 경우
+    if (FAILED(hr))
+    {
+        // 메시지 박스 플로팅
+        MessageBoxW(nullptr, L"Failed to create GPU billboard alpha blend state.", L"GpuBillboardRenderer Error", MB_OK | MB_ICONERROR);
+
+        return false;
+    }
+
+    return true;
+}
+
+bool GpuBillboardRenderer::CreateDepthStencilState(ID3D11Device* device)
+{
+    D3D11_DEPTH_STENCIL_DESC desc = {};
+    desc.DepthEnable = TRUE;
+    desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
+    desc.DepthFunc = D3D11_COMPARISON_LESS;
+
+    // Depth Stencil State 객체 생성
+    HRESULT hr = device->CreateDepthStencilState
+    (
+        &desc,
+        m_noDepthWriteState.GetAddressOf()
+    );
+
+    // Depth Stencil State 객체 생성에 실패한 경우
+    if (FAILED(hr))
+    {
+        // 메시지 박스 플로팅
+        MessageBoxW(nullptr, L"Failed to create GPU billboard depth stencil state.", L"GpuBillboardRenderer Error", MB_OK | MB_ICONERROR);
+
+        return false;
+    }
+
+    return true;
+}
+
 void GpuBillboardRenderer::UpdateCameraBuffer(ID3D11DeviceContext* context, const Camera& camera)
 {
     // 디바이스 컨텍스트나 카메라 버퍼가 누락된 경우
@@ -565,11 +651,50 @@ void GpuBillboardRenderer::Render
 
     context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
+    // Billboard alpha 값을 기준으로 배경과 섞이도록 Alpha Blend State 설정
+    const float blendFactor[4] =
+    {
+        0.0f,
+        0.0f,
+        0.0f,
+        0.0f
+    };
+
+    // 출력 병합기 단계에 Blend State 바인딩
+    context->OMSetBlendState
+    (
+        m_alphaBlendState.Get(),
+        blendFactor,
+        0xffffffff
+    );
+
+    // 출력 병합기 단계에 Depth Stencil State 바인딩
+    context->OMSetDepthStencilState
+    (
+        m_noDepthWriteState.Get(),
+        0
+    );
+
     // GPU Particle Buffer의 각 Particle 슬롯을 하나의 Billboard 인스턴스로 렌더링
     context->DrawIndexedInstancedIndirect
     (
         m_indirectArgsBuffer.Get(),
         0
+    );
+
+    // 이후 렌더링 상태에 영향을 주지 않도록 기본 Depth Stencil State로 복원
+    context->OMSetDepthStencilState
+    (
+        nullptr,
+        0
+    );
+
+    // 이후 렌더링 상태에 영향을 주지 않도록 기본 Blend State로 복원
+    context->OMSetBlendState
+    (
+        nullptr,
+        blendFactor,
+        0xffffffff
     );
 
     // 다음 Compute Shader 업데이트에서 동일 버퍼를 UAV로 사용할 수 있도록 SRV 바인딩 해제

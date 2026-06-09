@@ -29,7 +29,7 @@ namespace
         float orbitRadialVelocity;
         float spiralDepthScale;
         float spiralDepthFrequency;
-        float padding;
+        float fadeOutStartRatio;
 
         DirectX::XMFLOAT4 spiralRight;
 
@@ -657,7 +657,7 @@ void GpuParticleSystem::UpdateParticleUpdateBuffer
     bufferData.orbitRadialVelocity = ParticleConfig::OrbitRadialVelocity;
     bufferData.spiralDepthScale = ParticleConfig::SpiralDepthScale;
     bufferData.spiralDepthFrequency = ParticleConfig::SpiralDepthFrequency;
-    bufferData.padding = 0.0f;
+    bufferData.fadeOutStartRatio = ParticleConfig::ParticleFadeOutStartRatio;
     bufferData.spiralRight = m_spiralRight;
     bufferData.spiralUp = m_spiralUp;
     bufferData.spiralForward = m_spiralForward;
