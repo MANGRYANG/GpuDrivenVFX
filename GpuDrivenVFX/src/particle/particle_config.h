@@ -49,5 +49,5 @@ namespace ParticleConfig
     constexpr float SpiralDepthFrequency = 2.0f;
 
     // Particle 수명 중 fade-out이 시작되는 비율
-    constexpr float ParticleFadeOutStartRatio = 0.35f;
+    constexpr float ParticleFadeOutStartRatio = 0.0f;
 }

@@ -41,7 +41,8 @@ namespace
             return 1.0f;
         }
 
-        return alpha;
+        // Alpha 값의 제곱을 반환
+        return alpha * alpha;
     }
 }
 
