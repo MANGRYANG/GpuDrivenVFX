@@ -90,7 +90,10 @@ private:
     bool CreateAliveCountBuffer(ID3D11Device* device);
 
     // 중심 방출형 파티클 평면에 대한 회전 행렬을 계산하는 함수
-    void CalculateSpiralBasis();
+    void CalculateSpiralBasis(float planeRotationAngle);
+
+    // Spiral Particle 방출 평면의 회전 각도를 갱신하는 함수
+    void UpdateEmitterPlaneRotation(float deltaTime);
 
     // GPU Particle 업데이트 상수 버퍼를 갱신하는 함수
     void UpdateParticleUpdateBuffer
@@ -125,6 +128,8 @@ private:
         std::uint32_t spawnIndex = 0;
         // Spiral Arm 배치를 계산하기 위한 GPU Particle 생성 순서
         std::uint32_t spawnSequence = 0;
+        // Spiral Particle 방출 평면의 현재 회전 각도
+        float planeRotationAngle = 0.0f;
         // GPU Particle을 Billboard로 렌더링할 때 사용할 색상
         DirectX::XMFLOAT4 color = DirectX::XMFLOAT4(0.5f, 0.5f, 1.0f, 1.0f);
     };
