@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "core/frame_timer.h"
+#include "core/gpu_timestamp_query.h"
 
 #include "platform/window.h"
 
@@ -33,6 +34,16 @@ struct ParticlePerformanceStats
     double renderMilliseconds = 0.0;
     // 현재 프레임에 대한 전체 처리 시간
     double frameMilliseconds = 0.0;
+
+    // GPU Timestamp Query에서 회수한 Particle Update 구간의 실행 시간(ms)
+    double gpuUpdateMilliseconds = 0.0;
+    // GPU Timestamp Query에서 회수한 Particle Render 구간의 실행 시간(ms)
+    double gpuRenderMilliseconds = 0.0;
+
+    // 이번 프레임에 유효한 GPU Update 측정값을 회수하였는지 나타내는 플래그
+    bool hasGpuUpdateMilliseconds = false;
+    // 이번 프레임에 유효한 GPU Render 측정값을 회수하였는지 나타내는 플래그
+    bool hasGpuRenderMilliseconds = false;
 };
 
 class App
@@ -101,6 +112,16 @@ private:
     // 일정 시간 동안 누적한 Particle 성능 측정 결과
     ParticlePerformanceStats m_accumulatedParticlePerformanceStats;
 
+    // GPU Particle Update 구간의 실제 GPU 실행 시간을 측정하기 위한 Timestamp Query
+    GpuTimestampQuery m_gpuUpdateTimestampQuery;
+    // GPU Particle Render 구간의 실제 GPU 실행 시간을 측정하기 위한 Timestamp Query
+    GpuTimestampQuery m_gpuRenderTimestampQuery;
+
+    // 현재 누적 구간에서 회수한 GPU Particle Update Timestamp 측정 샘플 수
+    std::size_t m_gpuUpdateTimestampSampleCount = 0;
+    // 현재 누적 구간에서 회수한 GPU Particle Render Timestamp 측정 샘플 수
+    std::size_t m_gpuRenderTimestampSampleCount = 0;
+
     // 성능 측정 평균을 계산하기 위한 누적 샘플 개수
     std::size_t m_particlePerformanceSampleCount = 0;
 
@@ -119,6 +140,8 @@ private:
         double averageUpdateMilliseconds,
         double averageRenderMilliseconds,
         double averageFrameMilliseconds,
+        double averageGpuUpdateMilliseconds,
+        double averageGpuRenderMilliseconds,
         double fps
     );
 };
