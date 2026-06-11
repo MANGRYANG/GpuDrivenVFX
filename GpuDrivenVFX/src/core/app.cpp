@@ -39,6 +39,20 @@ bool App::Initialize(HINSTANCE hInstance, int nCmdShow)
         return false;
     }
 
+    // GPU Particle Update 구간의 Timestamp 측정에 사용할 Query 리소스 초기화
+    if (!m_gpuUpdateTimestampQuery.Initialize(m_renderer.GetDevice()))
+    {
+        // 초기화하지 못한 경우 실패 처리
+        return false;
+    }
+
+    // GPU Particle Render 구간의 Timestamp 측정에 사용할 Query 리소스 초기화
+    if (!m_gpuRenderTimestampQuery.Initialize(m_renderer.GetDevice()))
+    {
+        // 초기화하지 못한 경우 실패 처리
+        return false;
+    }
+
     // 렌더링 화면의 세로 픽셀 크기
     const int renderHeight = m_renderer.GetHeight();
 
@@ -110,6 +124,8 @@ int App::Run()
         {
             break;
         }
+
+        m_currentParticlePerformanceStats = ParticlePerformanceStats{};
 
         // 현재 프레임 처리 시간 측정 시작
         const auto frameStartTime = std::chrono::steady_clock::now();
@@ -187,8 +203,27 @@ void App::Update()
         break;
 
     case ParticleSimulationMode::GPU:
+        ID3D11DeviceContext* context = m_renderer.GetContext();
+
+        // GPU Timestamp Query에서 회수한 Particle Update 구간의 실행 시간(ms)을 담을 변수
+        double resolvedGpuUpdateMilliseconds = 0.0;
+
+        // Particle Update 구간의 실행 시간 회수에 성공한 경우
+        if (m_gpuUpdateTimestampQuery.Resolve(context, resolvedGpuUpdateMilliseconds))
+        {
+            m_currentParticlePerformanceStats.gpuUpdateMilliseconds = resolvedGpuUpdateMilliseconds;
+            m_currentParticlePerformanceStats.hasGpuUpdateMilliseconds = true;
+        }
+
+        // GPU Particle Update 구간의 시작 Timestamp 기록
+        m_gpuUpdateTimestampQuery.Begin(context);
+
         // GPU Compute Shader를 사용해 GPU Particle System 업데이트
-        m_gpuParticleSystem.Update(m_renderer.GetContext(), deltaTime);
+        m_gpuParticleSystem.Update(context, deltaTime);
+
+        // GPU Particle Update 구간의 종료 Timestamp 기록
+        m_gpuUpdateTimestampQuery.End(context);
+
         break;
     }
 
@@ -220,14 +255,33 @@ void App::Render()
         break;
 
     case ParticleSimulationMode::GPU:
+        ID3D11DeviceContext* context = m_renderer.GetContext();
+
+        // GPU Timestamp Query에서 회수한 Particle Render 구간의 실행 시간(ms)을 담을 변수
+        double resolvedGpuRenderMilliseconds = 0.0;
+
+        // Particle Render 구간의 실행 시간 회수에 성공한 경우
+        if (m_gpuRenderTimestampQuery.Resolve(context, resolvedGpuRenderMilliseconds))
+        {
+            m_currentParticlePerformanceStats.gpuRenderMilliseconds = resolvedGpuRenderMilliseconds;
+            m_currentParticlePerformanceStats.hasGpuRenderMilliseconds = true;
+        }
+
+        // GPU Particle Render 구간의 시작 Timestamp 기록
+        m_gpuRenderTimestampQuery.Begin(context);
+
         m_gpuBillboardRenderer.Render
         (
-            m_renderer.GetContext(),
+            context,
             m_camera,
             m_gpuParticleSystem.GetParticleSrv(),
             m_gpuParticleSystem.GetAliveIndexSrv(),
             m_gpuParticleSystem.GetAliveCountSrv()
         );
+
+        // GPU Particle Render 구간의 종료 Timestamp 기록
+        m_gpuRenderTimestampQuery.End(context);
+
         break;
     }
 
@@ -246,16 +300,39 @@ void App::PrintParticlePerformanceInfo(float elapsedSeconds)
     // Particle 성능 측정 출력 누적 시간 갱신
     m_particlePerformancePrintAccumulator += elapsedSeconds;
 
-    // 현재 프레임 성능 측정값 누적
+    // 현재 프레임의 CPU 타이머 기반 Particle Update 구간 시간 누적
     m_accumulatedParticlePerformanceStats.updateMilliseconds +=
         m_currentParticlePerformanceStats.updateMilliseconds;
 
+    // 현재 프레임의 CPU 타이머 기반 Particle Render 구간 시간 누적
     m_accumulatedParticlePerformanceStats.renderMilliseconds +=
         m_currentParticlePerformanceStats.renderMilliseconds;
 
+    // 이번 프레임에 유효한 GPU Update Timestamp 결과를 회수한 경우에만 누적
+    if (m_currentParticlePerformanceStats.hasGpuUpdateMilliseconds)
+    {
+        m_accumulatedParticlePerformanceStats.gpuUpdateMilliseconds +=
+            m_currentParticlePerformanceStats.gpuUpdateMilliseconds;
+        
+        // GPU Particle Update Timestamp 측정 샘플 수 증가
+        ++m_gpuUpdateTimestampSampleCount;
+    }
+
+    // 이번 프레임에 유효한 GPU Render Timestamp 결과를 회수한 경우에만 누적
+    if (m_currentParticlePerformanceStats.hasGpuRenderMilliseconds)
+    {
+        m_accumulatedParticlePerformanceStats.gpuRenderMilliseconds +=
+            m_currentParticlePerformanceStats.gpuRenderMilliseconds;
+
+        // GPU Particle Render Timestamp 측정 샘플 수 증가
+        ++m_gpuRenderTimestampSampleCount;
+    }
+
+    // 현재 프레임 전체 처리 시간 누적
     m_accumulatedParticlePerformanceStats.frameMilliseconds +=
         m_currentParticlePerformanceStats.frameMilliseconds;
 
+    // CPU 타이머 기반 성능 측정 샘플 수 증가
     ++m_particlePerformanceSampleCount;
 
     // 1초마다 Particle 성능 측정 결과를 Output 창에 출력
@@ -265,25 +342,44 @@ void App::PrintParticlePerformanceInfo(float elapsedSeconds)
     }
 
     // 샘플이 없는 경우 출력하지 않음
-    if (m_particlePerformanceSampleCount == 0)
+    if (m_particlePerformanceSampleCount == 0 && m_gpuUpdateTimestampSampleCount == 0)
     {
         return;
     }
 
     // 평균 계산에 사용할 샘플 개수
     const double sampleCount = static_cast<double>(m_particlePerformanceSampleCount);
+    const double gpuSampleCount = static_cast<double>(m_gpuUpdateTimestampSampleCount);
 
     // 1초간 누적된 샘플을 바탕으로 평균 Update 소요 시간(ms) 계산
     const double averageUpdateMilliseconds =
-        m_accumulatedParticlePerformanceStats.updateMilliseconds / sampleCount;
+        sampleCount > 0
+        ? m_accumulatedParticlePerformanceStats.updateMilliseconds / sampleCount
+        : 0.0;
 
     // 1초간 누적된 샘플을 바탕으로 평균 Render 소요 시간(ms) 계산
     const double averageRenderMilliseconds =
-        m_accumulatedParticlePerformanceStats.renderMilliseconds / sampleCount;
+        sampleCount > 0
+        ? m_accumulatedParticlePerformanceStats.renderMilliseconds / sampleCount
+        : 0.0;
 
     // 1초간 누적된 샘플을 바탕으로 평균 총 프레임 처리 시간(ms) 계산
     const double averageFrameMilliseconds =
-        m_accumulatedParticlePerformanceStats.frameMilliseconds / sampleCount;
+        sampleCount > 0
+        ? m_accumulatedParticlePerformanceStats.frameMilliseconds / sampleCount
+        : 0.0;
+
+    // 회수된 GPU Update Timestamp 샘플을 기준으로 평균 GPU Update 실행 시간(ms) 계산
+    const double averageGpuUpdateMilliseconds =
+        gpuSampleCount > 0
+        ? m_accumulatedParticlePerformanceStats.gpuUpdateMilliseconds / gpuSampleCount
+        : 0.0;
+
+    // 회수된 GPU Render Timestamp 샘플을 기준으로 평균 GPU Render 실행 시간(ms) 계산
+    const double averageGpuRenderMilliseconds =
+        gpuSampleCount > 0
+        ? m_accumulatedParticlePerformanceStats.gpuRenderMilliseconds / gpuSampleCount
+        : 0.0;
 
     // 평균 프레임 시간을 바탕으로 초당 프레임 수(FPS) 계산
     const double fps = averageFrameMilliseconds > 0.0
@@ -300,13 +396,12 @@ void App::PrintParticlePerformanceInfo(float elapsedSeconds)
         (
             debugText,
             256,
-            L"[Perf][CPU] particles=%zu, update=%.3fms, render=%.3fms, frame=%.3fms, fps=%.1f, dropped=%zu\n",
+            L"[Perf][CPU] particles=%zu, cpu_update=%.3fms, cpu_render=%.3fms, frame=%.3fms, fps=%.1f\n",
             m_cpuParticleSystem.GetMaxParticleCount(),
             averageUpdateMilliseconds,
             averageRenderMilliseconds,
             averageFrameMilliseconds,
-            fps,
-            m_cpuParticleSystem.GetDroppedSpawnCount()
+            fps
         );
         break;
 
@@ -315,10 +410,10 @@ void App::PrintParticlePerformanceInfo(float elapsedSeconds)
         (
             debugText,
             256,
-            L"[Perf][GPU] particles=%zu, update_submit=%.3fms, render_submit=%.3fms, frame=%.3fms, fps=%.1f\n",
+            L"[Perf][GPU] particles=%zu, gpu_update=%.3fms, gpu_render=%.3fms, frame=%.3fms, fps=%.1f\n",
             m_gpuParticleSystem.GetMaxParticleCount(),
-            averageUpdateMilliseconds,
-            averageRenderMilliseconds,
+            averageGpuUpdateMilliseconds,
+            averageGpuRenderMilliseconds,
             averageFrameMilliseconds,
             fps
         );
@@ -333,6 +428,8 @@ void App::PrintParticlePerformanceInfo(float elapsedSeconds)
     (
         averageUpdateMilliseconds,
         averageRenderMilliseconds,
+        averageGpuUpdateMilliseconds,
+        averageGpuRenderMilliseconds,
         averageFrameMilliseconds,
         fps
     );
@@ -345,6 +442,9 @@ void App::PrintParticlePerformanceInfo(float elapsedSeconds)
 
     // 누적 샘플 개수 초기화
     m_particlePerformanceSampleCount = 0;
+
+    m_gpuUpdateTimestampSampleCount = 0;
+    m_gpuRenderTimestampSampleCount = 0;
 }
 
 void App::InitializeParticlePerformanceCsvLog()
@@ -375,11 +475,12 @@ void App::InitializeParticlePerformanceCsvLog()
     // Header가 바로 파일에 기록되도록 flush
     m_particlePerformanceCsvFile.flush();
 }
-
 void App::WriteParticlePerformanceCsvRow
 (
     double averageUpdateMilliseconds,
     double averageRenderMilliseconds,
+    double averageGpuUpdateMilliseconds,
+    double averageGpuRenderMilliseconds,
     double averageFrameMilliseconds,
     double fps
 )
@@ -410,8 +511,8 @@ void App::WriteParticlePerformanceCsvRow
         m_particlePerformanceCsvFile
             << "GPU,"
             << m_gpuParticleSystem.GetMaxParticleCount() << ","
-            << averageUpdateMilliseconds << ","
-            << averageRenderMilliseconds << ","
+            << averageGpuUpdateMilliseconds << ","
+            << averageGpuRenderMilliseconds << ","
             << averageFrameMilliseconds << ","
             << fps
             << "\n";
