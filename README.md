@@ -1,8 +1,9 @@
 # GpuDrivenVFX
 
 <p align="center">
-  <img width="1282" height="752" alt="스크린샷 2026-06-11 182247" src="https://github.com/user-attachments/assets/25552114-5b41-4bb7-ad8d-5851c010a9ad" />
+  <img width="50%" height="auto" alt="GpuDrivenVFX" src="https://github.com/user-attachments/assets/ce91948f-2855-4155-8c76-25066ceaf4f6" />
 </p>
+
 
 ---
 
